@@ -10,6 +10,8 @@
 
 A **production-grade, event-driven platform** for optimizing AWS costs with advanced analytics and automation.
 
+> 💡 **Note**: This project focuses exclusively on AWS. We are not implementing multi-cloud support (GCP, Azure).
+
 **Key Capabilities:**
 - 💰 **Cost Analysis**: Ingests and analyzes AWS Cost and Usage Reports (CUR)
 - 📊 **Data Processing**: Automated ETL pipeline for cost aggregation
@@ -609,10 +611,11 @@ aws sqs get-queue-attributes \
    - Predictive cost modeling
    - Recommendation engine
 
-8. **Multi-Cloud Expansion**
-   - GCP BigQuery integration
-   - Azure Cost Management integration
-   - Unified FOCUS schema
+8. **Advanced AWS Features**
+   - AWS Organizations support
+   - Savings Plans recommendations
+   - Reserved Instance optimization
+   - Cross-region cost analysis
 
 ---
 

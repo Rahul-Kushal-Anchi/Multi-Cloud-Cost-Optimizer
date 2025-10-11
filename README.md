@@ -1,21 +1,24 @@
-# Multi-Cloud Cost Optimizer
+# AWS Cost Optimizer
 
-**A production-grade platform for optimizing cloud costs across AWS, GCP, and Azure**
+**A production-grade, event-driven platform for optimizing AWS costs with advanced analytics and automation**
 
 > 💡 **Built with AI-Assisted Development:** This project demonstrates modern development practices using ChatGPT for design and Cursor for implementation.
+
+> 🎯 **AWS-Focused:** This project is exclusively focused on AWS cost optimization. We are not implementing multi-cloud support (GCP, Azure).
 
 ---
 
 ## 🎯 Overview
 
-Multi-Cloud Cost Optimizer is a comprehensive platform that:
-- **Ingests** billing data from AWS, GCP, and Azure
-- **Analyzes** spending patterns and identifies waste
-- **Recommends** cost optimization opportunities (rightsizing, commitments, waste removal)
-- **Alerts** on anomalies and budget overruns
-- **Visualizes** costs across providers in unified dashboards
+AWS Cost Optimizer is a comprehensive platform that:
+- **Ingests** AWS Cost and Usage Reports (CUR) automatically
+- **Processes** billing data through an event-driven ETL pipeline
+- **Analyzes** spending patterns and identifies cost anomalies
+- **Recommends** cost optimization opportunities (rightsizing, waste removal, commitments)
+- **Alerts** on anomalies and budget overruns via SNS
+- **Stores** data in a scalable data lake for historical analysis
 
-**Tech Stack:** Python, Terraform, AWS Lambda, FastAPI, DynamoDB, Athena, Grafana
+**Tech Stack:** Python, Terraform, AWS Lambda, EventBridge, SQS, DynamoDB, S3, SNS, FastAPI
 
 ---
 
@@ -159,27 +162,23 @@ curl http://localhost:8000/api/v1/cost/summary?date=2025-01-15
 multi-cloud-cost-optimizer/
 │
 ├── docs/                           # Documentation
-│   ├── Learning_Guide.md          # Complete learning guide
-│   ├── AI_Tools_Mastery.md        # ChatGPT + Cursor mastery
-│   ├── 12_Week_Roadmap.md         # Day-by-day roadmap
-│   ├── Quick_Reference.md         # Quick reference
 │   └── Architecture.md            # System architecture
 │
 ├── infra/                          # Infrastructure as Code
-│   ├── aws/
-│   │   ├── main.tf                # Main Terraform configuration
-│   │   ├── variables.tf           # Variables
-│   │   ├── outputs.tf             # Outputs
-│   │   └── modules/               # Reusable modules
-│   ├── gcp/                       # GCP infrastructure (future)
-│   └── azure/                     # Azure infrastructure (future)
+│   └── aws/
+│       ├── main.tf                # Main Terraform configuration
+│       ├── variables.tf           # Variables
+│       ├── outputs.tf             # Outputs
+│       └── etl_aws_cur_parser.zip # Lambda deployment package
 │
 ├── etl/                            # ETL pipelines
-│   ├── aws_lambda/
-│   │   ├── etl_aws_cur_parser/    # CUR file processor
-│   │   └── signal_router/         # Real-time anomaly router
-│   ├── gcp_functions/             # GCP Cloud Functions (future)
-│   └── azure_functions/           # Azure Functions (future)
+│   └── aws_lambda/
+│       ├── etl_aws_cur_parser/    # CUR file processor
+│       │   ├── lambda_function.py # Main ETL handler
+│       │   └── requirements.txt   # Lambda dependencies
+│       └── signal_router/         # Real-time anomaly router
+│           ├── lambda_function.py
+│           └── requirements.txt
 │
 ├── engine/                         # Optimization engines
 │   ├── base.py                    # Base classes
@@ -204,9 +203,7 @@ multi-cloud-cost-optimizer/
 │   └── test_engine.py             # Engine tests
 │
 ├── samples/                        # Sample data
-│   ├── aws_cur_sample.csv         # Sample AWS CUR
-│   ├── gcp_billing_sample.json    # Sample GCP billing
-│   └── azure_cost_sample.csv      # Sample Azure cost
+│   └── aws_cur_sample.csv         # Sample AWS CUR
 │
 ├── dashboards/                     # Visualization configs
 │   ├── grafana.json               # Grafana dashboard
@@ -236,12 +233,12 @@ multi-cloud-cost-optimizer/
 4. Implement optimization engines
 5. Create Grafana dashboards
 
-### Phase 3: Multi-Cloud (Weeks 6-9)
-1. Read [Learning Guide](docs/Learning_Guide.md) - Multi-Cloud section
-2. Follow [12-Week Roadmap](docs/12_Week_Roadmap.md) Week 5-9
-3. Add GCP integration
-4. Add Azure integration
-5. Unify data in common schema (FOCUS)
+### Phase 3: Advanced AWS Features (Weeks 6-9)
+1. Implement cost anomaly detection with ML
+2. Add resource optimization recommendations
+3. Build cost forecasting models
+4. Add AWS Organizations support
+5. Implement multi-account cost aggregation
 
 ### Phase 4: Production (Weeks 10-12)
 1. Follow [12-Week Roadmap](docs/12_Week_Roadmap.md) Week 10-12
@@ -273,54 +270,68 @@ This project is designed to be built with AI assistance:
 
 ## 🏗️ Architecture
 
-**High-Level Flow:**
+**Event-Driven Architecture Flow:**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Multi-Cloud Sources                      │
-├──────────────┬──────────────────────┬────────────────────────┤
-│ AWS CUR (S3) │ GCP BigQuery Export  │ Azure Cost Export      │
-└──────┬───────┴───────────┬──────────┴──────────┬─────────────┘
-       │                   │                     │
-       ▼                   ▼                     ▼
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│ Lambda (AWS) │    │ Cloud Func   │    │ Azure Func   │
-│ ETL Pipeline │    │ (GCP)        │    │              │
-└──────┬───────┘    └──────┬───────┘    └──────┬───────┘
-       │                   │                     │
-       └───────────────────┴─────────────────────┘
+│                   AWS Cost Data Source                       │
+│              (Cost and Usage Reports - CUR)                  │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+                ┌─────────────────────┐
+                │   S3 Cost Lake      │
+                │  (Raw CUR Files)    │
+                └──────────┬──────────┘
                            │
                            ▼
-              ┌────────────────────────┐
-              │  Unified Data Lake     │
-              │  (S3 Parquet, FOCUS)   │
-              └────────┬───────────────┘
-                       │
-         ┏━━━━━━━━━━━━━┻━━━━━━━━━━━━━┓
-         ▼                            ▼
-┌────────────────┐          ┌─────────────────┐
-│ Optimization   │          │ Analytics Layer │
-│ Engines        │          │ (Athena/Glue)   │
-│ • Rightsizing  │          └────────┬────────┘
-│ • Commitments  │                   │
-│ • Waste        │                   │
-│ • Anomaly      │                   │
-└────────┬───────┘                   │
-         │                            │
-         └────────────┬───────────────┘
-                      │
-                      ▼
-            ┌──────────────────┐
-            │   FastAPI         │
-            │   Backend         │
-            └─────────┬─────────┘
-                      │
-         ┏━━━━━━━━━━━━┻━━━━━━━━━━━━┓
-         ▼                          ▼
-┌──────────────────┐      ┌─────────────────┐
-│ Grafana          │      │ Slack/SNS       │
-│ Dashboards       │      │ Alerts          │
-└──────────────────┘      └─────────────────┘
+                ┌─────────────────────┐
+                │   EventBridge Bus   │
+                │  (Event Router)     │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │   SQS Queue         │
+                │  + Dead Letter Q    │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │   Lambda Function   │
+                │  ETL CUR Parser     │
+                └──────────┬──────────┘
+                           │
+           ┌───────────────┴───────────────┐
+           │                               │
+           ▼                               ▼
+┌──────────────────┐          ┌────────────────────┐
+│  DynamoDB Table  │          │  S3 Data Lake      │
+│  (Daily Totals)  │          │  (Curated Data)    │
+└──────────────────┘          └────────────────────┘
+           │
+           ▼
+┌──────────────────┐
+│ Optimization     │
+│ Engines          │
+│ • Rightsizing    │
+│ • Waste          │
+│ • Anomaly        │
+│ • Commitments    │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│   FastAPI        │
+│   Backend        │
+└─────────┬────────┘
+          │
+    ┏─────┻─────┓
+    ▼           ▼
+┌─────────┐  ┌────────┐
+│ Grafana │  │  SNS   │
+│Dashboard│  │ Alerts │
+└─────────┘  └────────┘
 ```
 
 **See [Architecture.md](docs/Architecture.md) for detailed diagrams**
@@ -416,15 +427,15 @@ make deploy-all
 - ✅ Grafana dashboards
 
 ### Planned
-- 🔄 GCP BigQuery billing integration
-- 🔄 Azure Cost Management integration
-- 🔄 Unified FOCUS schema
 - 🔄 Commitment recommendations (RI/Savings Plans)
 - 🔄 ML-based anomaly detection
 - 🔄 Budget management
 - 🔄 Cost forecasting
 - 🔄 Tag compliance checker
-- 🔄 Multi-cloud cost comparison
+- 🔄 Resource rightsizing recommendations
+- 🔄 Idle resource detection
+- 🔄 AWS Organizations support
+- 🔄 Multi-account cost aggregation
 - 🔄 CI/CD pipeline
 
 ---
