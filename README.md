@@ -18,7 +18,27 @@ AWS Cost Optimizer is a comprehensive platform that:
 - **Alerts** on anomalies and budget overruns via SNS
 - **Stores** data in a scalable data lake for historical analysis
 
-**Tech Stack:** Python, Terraform, AWS Lambda, EventBridge, SQS, DynamoDB, S3, SNS, FastAPI
+**Tech Stack:** Python, Terraform, AWS Lambda, EventBridge, SQS, DynamoDB, S3, SNS, FastAPI, Streamlit
+
+---
+
+## 🎨 Streamlit Dashboard
+
+**AI-Powered Cost Optimization Interface**
+
+```bash
+./run_streamlit.sh
+# Then open: http://localhost:8501
+```
+
+**Features:**
+- 📊 Real-time dashboard with metrics
+- 🤖 AI assistant powered by GPT-4o-mini
+- 💡 Smart recommendations ($4,593+/month savings)
+- 🔔 Cost alerts and anomaly detection
+- 📈 ML-based forecasting
+
+**Documentation:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
 
 ---
 
@@ -159,7 +179,7 @@ curl http://localhost:8000/api/v1/cost/summary?date=2025-01-15
 ## 📁 Project Structure
 
 ```
-multi-cloud-cost-optimizer/
+aws-cost-optimizer/
 │
 ├── docs/                           # Documentation
 │   └── Architecture.md            # System architecture
