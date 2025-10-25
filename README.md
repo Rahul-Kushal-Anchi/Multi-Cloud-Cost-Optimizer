@@ -358,6 +358,32 @@ MIT License - See [LICENSE](LICENSE) file
 
 ---
 
+## 🚀 CI/CD Pipeline
+
+**Automated Deployment & Monitoring**
+
+[![Deploy](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/deploy.yml/badge.svg)](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/deploy.yml)
+[![Security](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/security.yml/badge.svg)](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/security.yml)
+[![Infrastructure](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/infrastructure.yml/badge.svg)](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/infrastructure.yml)
+
+### **Production Deployment Status**
+- ✅ **Web App**: http://aws-cost-optimizer-dev-alb-2097253605.us-east-1.elb.amazonaws.com:80
+- ✅ **API Service**: http://aws-cost-optimizer-dev-alb-2097253605.us-east-1.elb.amazonaws.com:8000/healthz
+- ✅ **ECS Services**: Both API and Web services running on Fargate
+- ✅ **Monitoring**: CloudWatch dashboards and alarms configured
+
+### **CI/CD Features**
+- 🔄 **Automated Testing**: Python and Node.js test suites
+- 🐳 **Docker Builds**: Multi-platform AMD64 images
+- 🚀 **ECS Deployment**: Automatic service updates
+- 🔒 **Security Scanning**: Bandit, Safety, Trivy, Semgrep
+- 📊 **Infrastructure Management**: Terraform plan/apply/destroy
+- 📈 **Monitoring Setup**: CloudWatch dashboards and X-Ray tracing
+
+**Documentation:** [CI_CD_SETUP_GUIDE.md](CI_CD_SETUP_GUIDE.md)
+
+---
+
 ## 🚀 Ready to Get Started?
 
 **Launch your AWS Cost Optimizer dashboard:**

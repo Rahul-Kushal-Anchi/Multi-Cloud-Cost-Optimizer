@@ -1,0 +1,142 @@
+name: Security and Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install security tools
+      run: |
+        pip install bandit safety semgrep
+        npm install -g audit-ci
+
+    - name: Run Bandit security scan
+      run: |
+        bandit -r api/ -f json -o bandit-report.json || true
+        bandit -r api/ -f txt
+
+    - name: Run Safety check
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check
+
+    - name: Run npm audit
+      run: |
+        cd web-app
+        npm audit --audit-level moderate || true
+
+    - name: Run Semgrep security scan
+      run: |
+        semgrep --config=auto api/ --json --output=semgrep-report.json || true
+        semgrep --config=auto api/
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+          semgrep-report.json
+
+  docker-security:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build Docker images
+      run: |
+        docker build --platform linux/amd64 -f deployment/docker/Dockerfile.web.simple -t aws-cost-optimizer-web:security-test .
+        docker build --platform linux/amd64 -f deployment/docker/Dockerfile.api.simple -t aws-cost-optimizer-api:security-test .
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'aws-cost-optimizer-web:security-test'
+        format: 'sarif'
+        output: 'trivy-web-results.sarif'
+
+    - name: Run Trivy vulnerability scanner for API
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'aws-cost-optimizer-api:security-test'
+        format: 'sarif'
+        output: 'trivy-api-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-web-results.sarif'
+
+    - name: Upload Trivy API scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-api-results.sarif'
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install linting tools
+      run: |
+        pip install flake8 black isort mypy
+        npm install -g eslint prettier
+
+    - name: Run Python linting
+      run: |
+        flake8 api/ --max-line-length=100 --extend-ignore=E203,W503
+        black --check api/
+        isort --check-only api/
+
+    - name: Run Python type checking
+      run: |
+        mypy api/ --ignore-missing-imports
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: web-app/package-lock.json
+
+    - name: Install web dependencies
+      run: |
+        cd web-app
+        npm ci
+
+    - name: Run web linting
+      run: |
+        cd web-app
+        npm run lint || true
+        npx prettier --check src/ || true
+
+    - name: Check web build
+      run: |
+        cd web-app
+        npm run build

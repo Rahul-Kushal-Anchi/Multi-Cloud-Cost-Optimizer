@@ -1,0 +1,101 @@
+name: Monitoring and Alerting Setup
+
+on:
+  push:
+    paths:
+      - 'deployment/monitoring/**'
+      - 'deployment/monitoring/*'
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Monitoring action to perform'
+        required: true
+        default: 'setup'
+        type: choice
+        options:
+        - setup
+        - update
+        - cleanup
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  setup-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'setup' || github.event.inputs.action == 'update' || github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install monitoring dependencies
+      run: |
+        pip install boto3 pyyaml
+
+    - name: Create CloudWatch Dashboard
+      run: |
+        python deployment/monitoring/setup_cloudwatch_dashboard.py
+
+    - name: Setup CloudWatch Alarms
+      run: |
+        python deployment/monitoring/setup_alarms.py
+
+    - name: Configure Log Groups
+      run: |
+        python deployment/monitoring/setup_log_groups.py
+
+    - name: Setup X-Ray Tracing
+      run: |
+        python deployment/monitoring/setup_xray_tracing.py
+
+    - name: Verify Monitoring Setup
+      run: |
+        echo "🔍 Verifying monitoring setup..."
+        aws cloudwatch describe-dashboards --dashboard-names "AWS-Cost-Optimizer-Dashboard" --query 'DashboardEntries[*].DashboardName' --output table
+        aws cloudwatch describe-alarms --alarm-names "aws-cost-optimizer-api-high-cpu" "aws-cost-optimizer-web-high-cpu" --query 'MetricAlarms[*].AlarmName' --output table
+
+  cleanup-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'cleanup'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Cleanup CloudWatch Resources
+      run: |
+        echo "🧹 Cleaning up monitoring resources..."
+        
+        # Delete dashboards
+        aws cloudwatch delete-dashboards --dashboard-names "AWS-Cost-Optimizer-Dashboard" || true
+        
+        # Delete alarms
+        aws cloudwatch delete-alarms --alarm-names \
+          "aws-cost-optimizer-api-high-cpu" \
+          "aws-cost-optimizer-web-high-cpu" \
+          "aws-cost-optimizer-api-high-memory" \
+          "aws-cost-optimizer-web-high-memory" \
+          "aws-cost-optimizer-cost-threshold" || true
+        
+        echo "✅ Monitoring cleanup completed"

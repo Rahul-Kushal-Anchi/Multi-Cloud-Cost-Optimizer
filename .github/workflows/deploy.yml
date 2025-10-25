@@ -1,0 +1,153 @@
+name: Deploy AWS Cost Optimizer
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_WEB_REPOSITORY: aws-cost-optimizer-web
+  ECR_API_REPOSITORY: aws-cost-optimizer-api
+  ECS_SERVICE_WEB: aws-cost-optimizer-dev-web
+  ECS_SERVICE_API: aws-cost-optimizer-dev-api
+  ECS_CLUSTER: aws-cost-optimizer-dev-cluster
+  ECS_TASK_DEFINITION_WEB: aws-cost-optimizer-dev-web
+  ECS_TASK_DEFINITION_API: aws-cost-optimizer-dev-api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Python dependencies
+      run: |
+        pip install -r api/requirements.txt
+        pip install pytest pytest-cov
+
+    - name: Run API tests
+      run: |
+        cd api
+        python -m pytest tests/ -v --cov=. --cov-report=xml
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: web-app/package-lock.json
+
+    - name: Install web dependencies
+      run: |
+        cd web-app
+        npm ci
+
+    - name: Run web tests
+      run: |
+        cd web-app
+        npm test -- --coverage --watchAll=false
+
+    - name: Build web application
+      run: |
+        cd web-app
+        npm run build
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push web image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build web application
+        docker build --platform linux/amd64 -f deployment/docker/Dockerfile.web.simple -t $ECR_REGISTRY/$ECR_WEB_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_WEB_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_WEB_REPOSITORY:latest
+        
+        # Push web image
+        docker push $ECR_REGISTRY/$ECR_WEB_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_WEB_REPOSITORY:latest
+
+    - name: Build, tag, and push API image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build API application
+        docker build --platform linux/amd64 -f deployment/docker/Dockerfile.api.simple -t $ECR_REGISTRY/$ECR_API_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_API_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_API_REPOSITORY:latest
+        
+        # Push API image
+        docker push $ECR_REGISTRY/$ECR_API_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_API_REPOSITORY:latest
+
+    - name: Download task definition
+      run: |
+        aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION_WEB --query taskDefinition > web-task-definition.json
+        aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION_API --query taskDefinition > api-task-definition.json
+
+    - name: Fill in the new image ID in the web task definition
+      id: task-def-web
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: web-task-definition.json
+        container-name: web
+        image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WEB_REPOSITORY }}:${{ github.sha }}
+
+    - name: Fill in the new image ID in the API task definition
+      id: task-def-api
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: api-task-definition.json
+        container-name: api
+        image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${{ github.sha }}
+
+    - name: Deploy web service
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def-web.outputs.task-definition }}
+        service: ${{ env.ECS_SERVICE_WEB }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
+
+    - name: Deploy API service
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def-api.outputs.task-definition }}
+        service: ${{ env.ECS_SERVICE_API }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
+
+    - name: Get deployment status
+      run: |
+        echo "🎉 Deployment completed successfully!"
+        echo "Web App: http://aws-cost-optimizer-dev-alb-2097253605.us-east-1.elb.amazonaws.com:80"
+        echo "API: http://aws-cost-optimizer-dev-alb-2097253605.us-east-1.elb.amazonaws.com:8000/healthz"
+        
+        # Check service status
+        aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE_WEB $ECS_SERVICE_API --query 'services[*].{ServiceName:serviceName,Status:status,RunningCount:runningCount,DesiredCount:desiredCount}' --output table
