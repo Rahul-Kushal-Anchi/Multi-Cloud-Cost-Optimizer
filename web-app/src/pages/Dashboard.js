@@ -1,17 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   DollarSign, 
   TrendingUp, 
   TrendingDown, 
   AlertTriangle,
-  Activity,
-  Server,
-  Database,
-  Cloud,
   Download
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useQuery } from 'react-query';
 import toast from 'react-hot-toast';
 import { exportDashboardData } from '../utils/export';
@@ -22,7 +18,6 @@ const serviceColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#
 
 const Dashboard = () => {
   const [timeRange, setTimeRange] = useState('7d');
-  const [selectedMetric, setSelectedMetric] = useState('cost');
 
   // Fetch dashboard data
   const { data: dashboardData, isLoading, error } = useQuery(

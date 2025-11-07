@@ -54,7 +54,7 @@ export default function App() {
       return null;
     }
   });
-  const [connectionStatus, setConnectionStatus] = useState('connected');
+  const [connectionStatus] = useState('connected');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
   

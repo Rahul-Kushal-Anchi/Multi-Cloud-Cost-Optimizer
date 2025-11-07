@@ -4,7 +4,6 @@ import {
   BarChart3, 
   TrendingUp, 
   TrendingDown, 
-  PieChart,
   Activity,
   Calendar,
   Filter,

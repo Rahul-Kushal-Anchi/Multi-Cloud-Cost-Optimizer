@@ -5,12 +5,9 @@ import {
   User, 
   Bell, 
   Shield, 
-  Database,
   Save,
   Eye,
-  EyeOff,
-  Check,
-  X
+  EyeOff
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';
@@ -38,6 +35,17 @@ const Settings = () => {
     }
   });
 
+  const queryClient = useQueryClient();
+
+  // Fetch user settings
+  const { data: settings, isLoading } = useQuery(
+    'settings',
+    async () => {
+      const response = await costAPI.getSettings();
+      return response.data;
+    }
+  );
+
   // Update form data when settings are loaded
   useEffect(() => {
     if (settings) {
@@ -50,17 +58,6 @@ const Settings = () => {
       }));
     }
   }, [settings]);
-
-  const queryClient = useQueryClient();
-
-  // Fetch user settings
-  const { data: settings, isLoading } = useQuery(
-    'settings',
-    async () => {
-      const response = await costAPI.getSettings();
-      return response.data;
-    }
-  );
 
   // Update settings
   const updateSettingsMutation = useMutation(
