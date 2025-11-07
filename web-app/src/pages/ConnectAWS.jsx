@@ -41,6 +41,8 @@ export default function ConnectAWS() {
   useEffect(() => {
     // Check if already connected
     checkConnection();
+    // Note: checkConnection is intentionally excluded to only run on mount
+    // Adding it to dependencies would cause unnecessary re-checks
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

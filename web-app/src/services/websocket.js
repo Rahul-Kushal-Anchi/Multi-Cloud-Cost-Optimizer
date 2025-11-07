@@ -113,6 +113,8 @@ export const useWebSocket = (url = 'ws://localhost:8080/ws') => {
     return () => {
       disconnect();
     };
+    // Note: connect and disconnect are intentionally excluded from dependencies
+    // to prevent infinite re-renders. They only need to run once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
