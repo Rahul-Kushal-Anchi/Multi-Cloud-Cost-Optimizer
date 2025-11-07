@@ -7,9 +7,7 @@ import {
   RotateCcw, 
   Power,
   PowerOff,
-  Eye,
-  Search,
-  Filter
+  Search
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';

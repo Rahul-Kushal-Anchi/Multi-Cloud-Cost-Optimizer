@@ -113,6 +113,7 @@ export const useWebSocket = (url = 'ws://localhost:8080/ws') => {
     return () => {
       disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Cleanup on unmount

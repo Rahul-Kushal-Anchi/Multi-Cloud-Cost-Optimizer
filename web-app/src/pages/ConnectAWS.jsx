@@ -23,11 +23,6 @@ export default function ConnectAWS() {
 
   const token = localStorage.getItem('token');
 
-  useEffect(() => {
-    // Check if already connected
-    checkConnection();
-  }, []);
-
   async function checkConnection() {
     try {
       const response = await fetch('/api/tenants/me', {
@@ -39,9 +34,15 @@ export default function ConnectAWS() {
         toast.success('AWS connection already configured');
       }
     } catch (error) {
-      console.error('Error checking connection:', error);
+      console.error('Failed to check connection:', error);
     }
   }
+
+  useEffect(() => {
+    // Check if already connected
+    checkConnection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleChange(e) {
     setFormData({

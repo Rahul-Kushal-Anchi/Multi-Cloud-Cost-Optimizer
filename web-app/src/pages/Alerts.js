@@ -8,9 +8,7 @@ import {
   Clock,
   Filter,
   Plus,
-  Edit,
   Trash2,
-  Eye,
   EyeOff
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -21,11 +19,10 @@ const Alerts = () => {
   const [filter, setFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState(null);
   const queryClient = useQueryClient();
 
   // Fetch alerts from REAL API
-  const { data: alerts = [], isLoading, error } = useQuery(
+  const { data: alerts = [], isLoading } = useQuery(
     ['alerts', filter, severityFilter],
     async () => {
       const response = await costAPI.getAlerts({ 
@@ -345,12 +342,13 @@ const Alerts = () => {
                 </div>
                 
                 <div className="flex items-center space-x-2 ml-4">
-                  <button
-                    onClick={() => setSelectedAlert(alert)}
+                  {/* View alert details button - functionality to be implemented */}
+                  {/* <button
+                    onClick={() => console.log('View alert:', alert)}
                     className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     <Eye className="h-4 w-4" />
-                  </button>
+                  </button> */}
                   
                   {alert.status === 'active' ? (
                     <button
