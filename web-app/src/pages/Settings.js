@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Settings as SettingsIcon, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';
+import { costAPI } from '../services/api';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -37,46 +38,35 @@ const Settings = () => {
     }
   });
 
+  // Update form data when settings are loaded
+  useEffect(() => {
+    if (settings) {
+      setFormData(prev => ({
+        ...prev,
+        name: settings.profile?.name || '',
+        email: settings.profile?.email || '',
+        notifications: settings.notifications || prev.notifications,
+        alerts: settings.alerts || prev.alerts
+      }));
+    }
+  }, [settings]);
+
   const queryClient = useQueryClient();
 
   // Fetch user settings
   const { data: settings, isLoading } = useQuery(
     'settings',
     async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        profile: {
-          name: 'John Doe',
-          email: 'john.doe@example.com',
-          role: 'admin',
-          lastLogin: new Date().toISOString()
-        },
-        notifications: {
-          email: true,
-          push: true,
-          sms: false
-        },
-        alerts: {
-          costSpike: true,
-          budgetExceeded: true,
-          anomaly: true,
-          optimization: false
-        },
-        preferences: {
-          theme: 'light',
-          timezone: 'UTC',
-          currency: 'USD',
-          language: 'en'
-        }
-      };
+      const response = await costAPI.getSettings();
+      return response.data;
     }
   );
 
   // Update settings
   const updateSettingsMutation = useMutation(
     async (newSettings) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return newSettings;
+      const response = await costAPI.updateSettings(newSettings);
+      return response.data;
     },
     {
       onSuccess: () => {
@@ -91,7 +81,20 @@ const Settings = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    updateSettingsMutation.mutate(formData);
+    updateSettingsMutation.mutate({
+      notifications: formData.notifications,
+      alerts: formData.alerts,
+      preferences: {
+        theme: document.querySelector('select[name="theme"]')?.value || 'light',
+        timezone: document.querySelector('select[name="timezone"]')?.value || 'UTC',
+        currency: document.querySelector('select[name="currency"]')?.value || 'USD',
+        language: document.querySelector('select[name="language"]')?.value || 'en'
+      },
+      profile: {
+        name: formData.name,
+        email: formData.email
+      }
+    });
   };
 
   const handleChange = (e) => {
@@ -368,7 +371,11 @@ const Settings = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Theme
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select 
+                        name="theme"
+                        defaultValue={settings?.preferences?.theme || 'light'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
                         <option value="light">Light</option>
                         <option value="dark">Dark</option>
                         <option value="auto">Auto</option>
@@ -378,7 +385,11 @@ const Settings = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Timezone
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select 
+                        name="timezone"
+                        defaultValue={settings?.preferences?.timezone || 'UTC'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
                         <option value="UTC">UTC</option>
                         <option value="EST">Eastern Time</option>
                         <option value="PST">Pacific Time</option>
@@ -389,7 +400,11 @@ const Settings = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Currency
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select 
+                        name="currency"
+                        defaultValue={settings?.preferences?.currency || 'USD'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
                         <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>
                         <option value="GBP">GBP (£)</option>
@@ -400,7 +415,11 @@ const Settings = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Language
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select 
+                        name="language"
+                        defaultValue={settings?.preferences?.language || 'en'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
                         <option value="en">English</option>
                         <option value="es">Spanish</option>
                         <option value="fr">French</option>

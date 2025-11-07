@@ -37,30 +37,33 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock authentication logic
-      if (email === 'admin@example.com' && password === 'password123') {
-        const userData = {
-          id: '1',
-          name: 'John Doe',
-          email: email,
-          role: 'admin',
-          avatar: null
-        };
+      // Call real API
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
 
-        const token = 'mock-jwt-token-' + Date.now();
-        
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
-        
-        toast.success('Login successful!');
-        return { success: true };
-      } else {
-        throw new Error('Invalid credentials');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Login failed');
       }
+
+      const data = await response.json();
+      const userData = {
+        id: data.user_id || data.id,
+        name: data.name || email.split('@')[0],
+        email: email,
+        role: data.role || 'member',
+        avatar: null
+      };
+
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      
+      toast.success('Login successful!');
+      return { success: true };
     } catch (error) {
       toast.error(error.message || 'Login failed');
       return { success: false, error: error.message };
@@ -80,10 +83,22 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const updatedUser = { ...user, ...profileData };
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(profileData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
+      const data = await response.json();
+      const updatedUser = { ...user, ...data };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
       
@@ -101,13 +116,25 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/user/password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to change password');
+      }
       
       toast.success('Password changed successfully');
       return { success: true };
     } catch (error) {
-      toast.error('Failed to change password');
+      toast.error(error.message || 'Failed to change password');
       return { success: false, error: error.message };
     } finally {
       setLoading(false);

@@ -55,6 +55,14 @@ Complete project overview and current status:
 
 **Start here if:** You want to understand what's been built
 
+### **[EVENT_DRIVEN_ROADMAP.md](EVENT_DRIVEN_ROADMAP.md)** 🗺️
+Implementation roadmap and architecture details:
+- Event-driven architecture design
+- AWS services integration guide
+- Step-by-step implementation plan
+
+**Start here if:** You want to understand the architecture
+
 ### **[docs/Architecture.md](docs/Architecture.md)** 🏗️
 System design and data flow:
 - High-level architecture

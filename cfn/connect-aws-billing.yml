@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cross-account READ-ONLY role for CUR via Athena with ExternalId.
+Parameters:
+  VendorAccountId: {Type: String, Description: Vendor AWS Account ID}
+  ExternalId: {Type: String, Description: External ID provided by vendor}
+  CurBucketName: {Type: String, Description: CUR S3 bucket name}
+  CurBucketPrefix: {Type: String, Default: cur/, Description: CUR prefix}
+  AthenaWorkGroup: {Type: String, Default: primary}
+  AthenaQueryResultsBucketName: {Type: String, Description: Athena results bucket}
+  AthenaQueryResultsPrefix: {Type: String, Default: athena-results/}
+  AthenaDatabase: {Type: String, Description: Athena database}
+  AthenaTable: {Type: String, Description: Athena table}
+Resources:
+  VendorReadOnlyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: VendorCostReadOnlyRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {AWS: !Sub "arn:aws:iam::${VendorAccountId}:root"}
+            Action: "sts:AssumeRole"
+            Condition: {StringEquals: {sts:ExternalId: !Ref ExternalId}}
+      Policies:
+        - PolicyName: VendorCostReadOnlyPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [s3:ListBucket]
+                Resource: !Sub "arn:aws:s3:::${CurBucketName}"
+                Condition: {StringLike: {s3:prefix: [!Ref CurBucketPrefix, !Sub "${CurBucketPrefix}*"]}}
+              - Effect: Allow
+                Action: [s3:GetObject]
+                Resource: !Sub "arn:aws:s3:::${CurBucketName}/${CurBucketPrefix}*"
+              - Effect: Allow
+                Action: [athena:StartQueryExecution, athena:GetQueryExecution, athena:GetQueryResults, athena:ListQueryExecutions, athena:GetWorkGroup]
+                Resource: "*"
+              - Effect: Allow
+                Action: [glue:GetDatabase, glue:GetDatabases, glue:GetTable, glue:GetTables]
+                Resource: "*"
+              - Effect: Allow
+                Action: [s3:ListBucket]
+                Resource: !Sub "arn:aws:s3:::${AthenaQueryResultsBucketName}"
+              - Effect: Allow
+                Action: [s3:PutObject, s3:GetObject]
+                Resource: !Sub "arn:aws:s3:::${AthenaQueryResultsBucketName}/${AthenaQueryResultsPrefix}*"
+Outputs:
+  VendorRoleArn: {Description: Cross-account role ARN, Value: !GetAtt VendorReadOnlyRole.Arn}

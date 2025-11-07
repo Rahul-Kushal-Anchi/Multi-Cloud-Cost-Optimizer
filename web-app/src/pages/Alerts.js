@@ -15,49 +15,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';
-
-// Mock alerts data
-const mockAlerts = [
-  {
-    id: '1',
-    type: 'cost_spike',
-    severity: 'high',
-    title: 'Cost Spike Detected',
-    message: 'AWS costs increased by 200% in the last 24 hours',
-    timestamp: new Date().toISOString(),
-    status: 'active',
-    threshold: 1000,
-    currentValue: 3000,
-    service: 'EC2',
-    region: 'us-east-1'
-  },
-  {
-    id: '2',
-    type: 'budget_exceeded',
-    severity: 'medium',
-    title: 'Budget Exceeded',
-    message: 'Monthly budget exceeded by 15%',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    status: 'active',
-    threshold: 10000,
-    currentValue: 11500,
-    service: 'All',
-    region: 'All'
-  },
-  {
-    id: '3',
-    type: 'anomaly',
-    severity: 'low',
-    title: 'Unusual Usage Pattern',
-    message: 'Detected unusual usage pattern in S3 storage',
-    timestamp: new Date(Date.now() - 7200000).toISOString(),
-    status: 'resolved',
-    threshold: 500,
-    currentValue: 750,
-    service: 'S3',
-    region: 'us-west-2'
-  }
-];
+import { costAPI } from '../services/api';
 
 const Alerts = () => {
   const [filter, setFilter] = useState('all');
@@ -66,33 +24,49 @@ const Alerts = () => {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const queryClient = useQueryClient();
 
-  // Fetch alerts
-  const { data: alerts = [], isLoading } = useQuery(
+  // Fetch alerts from REAL API
+  const { data: alerts = [], isLoading, error } = useQuery(
     ['alerts', filter, severityFilter],
     async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      let filteredAlerts = mockAlerts;
+      const response = await costAPI.getAlerts({ 
+        status: filter !== 'all' ? filter : undefined,
+        severity: severityFilter !== 'all' ? severityFilter : undefined
+      });
       
-      if (filter !== 'all') {
-        filteredAlerts = filteredAlerts.filter(alert => alert.status === filter);
+      // API may return array directly or wrapped in {alerts: [...]}
+      let alertsData = response.data;
+      if (Array.isArray(alertsData)) {
+        return alertsData;
+      } else if (alertsData?.alerts && Array.isArray(alertsData.alerts)) {
+        return alertsData.alerts;
       }
       
-      if (severityFilter !== 'all') {
-        filteredAlerts = filteredAlerts.filter(alert => alert.severity === severityFilter);
-      }
-      
-      return filteredAlerts;
+      // Format alerts to match expected structure
+      return (alertsData || []).map(alert => ({
+        id: alert.id || alert._id,
+        type: alert.type || 'info',
+        severity: alert.severity || 'medium',
+        title: alert.title || alert.type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        message: alert.message,
+        timestamp: alert.timestamp,
+        status: alert.status || 'active',
+        threshold: alert.threshold || 0,
+        currentValue: alert.currentValue || 0,
+        service: alert.service || 'All',
+        region: alert.region || 'All'
+      }));
     },
     {
-      refetchInterval: 30000
+      refetchInterval: 30000,
+      staleTime: 30000
     }
   );
 
   // Update alert status
   const updateAlertMutation = useMutation(
     async ({ id, status }) => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return { id, status };
+      const response = await costAPI.updateAlert(id, { status });
+      return response.data;
     },
     {
       onSuccess: (data) => {
@@ -108,8 +82,8 @@ const Alerts = () => {
   // Delete alert
   const deleteAlertMutation = useMutation(
     async (id) => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return id;
+      const response = await costAPI.deleteAlert(id);
+      return response.data;
     },
     {
       onSuccess: () => {
@@ -118,6 +92,24 @@ const Alerts = () => {
       },
       onError: () => {
         toast.error('Failed to delete alert');
+      }
+    }
+  );
+
+  // Create alert
+  const createAlertMutation = useMutation(
+    async (alertData) => {
+      const response = await costAPI.createAlert(alertData);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['alerts']);
+        toast.success('Alert created successfully');
+        setShowCreateModal(false);
+      },
+      onError: () => {
+        toast.error('Failed to create alert');
       }
     }
   );
@@ -225,6 +217,80 @@ const Alerts = () => {
           <option value="low">Low</option>
         </select>
       </div>
+
+      {/* Create Alert Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Create Alert</h2>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              createAlertMutation.mutate({
+                type: formData.get('type'),
+                severity: formData.get('severity'),
+                message: formData.get('message'),
+                service: formData.get('service') || 'All',
+                threshold: parseFloat(formData.get('threshold')) || 0,
+                currentValue: parseFloat(formData.get('currentValue')) || 0
+              });
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <select name="type" required className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="cost_spike">Cost Spike</option>
+                    <option value="budget_exceeded">Budget Exceeded</option>
+                    <option value="anomaly_detected">Anomaly Detected</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
+                  <select name="severity" required className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                  <textarea name="message" required rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
+                  <input type="text" name="service" defaultValue="All" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                </div>
+                <div className="flex space-x-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Threshold</label>
+                    <input type="number" name="threshold" step="0.01" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Value</label>
+                    <input type="number" name="currentValue" step="0.01" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createAlertMutation.isLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {createAlertMutation.isLoading ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Alerts List */}
       <div className="space-y-4">

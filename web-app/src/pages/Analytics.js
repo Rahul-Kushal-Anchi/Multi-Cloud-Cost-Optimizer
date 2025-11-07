@@ -7,7 +7,8 @@ import {
   PieChart,
   Activity,
   Calendar,
-  Filter
+  Filter,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -27,26 +28,12 @@ import {
 } from 'recharts';
 import { useQuery } from 'react-query';
 import toast from 'react-hot-toast';
+import { costAPI } from '../services/api';
 
-// Mock data for analytics
-const mockTrendData = [
-  { date: '2025-01-01', cost: 1200, forecast: 1250, savings: 200 },
-  { date: '2025-01-02', cost: 1350, forecast: 1300, savings: 150 },
-  { date: '2025-01-03', cost: 1100, forecast: 1280, savings: 180 },
-  { date: '2025-01-04', cost: 1450, forecast: 1320, savings: 120 },
-  { date: '2025-01-05', cost: 1300, forecast: 1350, savings: 50 },
-  { date: '2025-01-06', cost: 1600, forecast: 1380, savings: 220 },
-  { date: '2025-01-07', cost: 1400, forecast: 1400, savings: 0 }
-];
+// Color palette for services
+const serviceColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#0088FE', '#00C49F', '#FFBB28'];
 
-const mockServiceData = [
-  { name: 'EC2', cost: 5400, percentage: 45, trend: 5.2, color: '#8884d8' },
-  { name: 'RDS', cost: 3000, percentage: 25, trend: -2.1, color: '#82ca9d' },
-  { name: 'S3', cost: 1800, percentage: 15, trend: 8.3, color: '#ffc658' },
-  { name: 'Lambda', cost: 1200, percentage: 10, trend: 12.5, color: '#ff7300' },
-  { name: 'Other', cost: 600, percentage: 5, trend: -1.2, color: '#00ff00' }
-];
-
+// Fallback mock data for regions (API doesn't provide this yet)
 const mockRegionData = [
   { region: 'us-east-1', cost: 4800, instances: 45 },
   { region: 'us-west-2', cost: 3200, instances: 32 },
@@ -59,23 +46,42 @@ const Analytics = () => {
   const [selectedMetric, setSelectedMetric] = useState('cost');
   const [chartType, setChartType] = useState('line');
 
-  // Fetch analytics data
-  const { data: analyticsData, isLoading } = useQuery(
+  // Fetch analytics data from REAL API
+  const { data: analyticsData, isLoading, error } = useQuery(
     ['analytics', timeRange],
     async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const [dashboardRes, trendsRes, servicesRes] = await Promise.all([
+        costAPI.getDashboardData(timeRange),
+        costAPI.getCostTrends(timeRange),
+        costAPI.getServiceBreakdown(timeRange)
+      ]);
+      
+      // Calculate cost change from trends
+      const trends = trendsRes.data.data || [];
+      let costChange = 0;
+      if (trends.length >= 2) {
+        const recent = trends.slice(-7); // Last 7 days
+        const older = trends.slice(-14, -7); // Previous 7 days
+        if (older.length > 0 && recent.length > 0) {
+          const recentAvg = recent.reduce((sum, t) => sum + (t.cost || 0), 0) / recent.length;
+          const olderAvg = older.reduce((sum, t) => sum + (t.cost || 0), 0) / older.length;
+          costChange = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0;
+        }
+      }
+
       return {
-        totalCost: 12000,
-        costChange: 5.2,
-        savings: 2400,
-        optimizationScore: 85,
-        topServices: mockServiceData,
-        trends: mockTrendData,
-        regions: mockRegionData
+        totalCost: dashboardRes.data.totalCost,
+        costChange: Math.round(costChange * 10) / 10, // Round to 1 decimal
+        savings: dashboardRes.data.savings,
+        optimizationScore: dashboardRes.data.optimizationScore,
+        topServices: servicesRes.data.services || [],
+        trends: trends,
+        regions: mockRegionData // Still using mock for regions until API supports it
       };
     },
     {
-      refetchInterval: 30000
+      refetchInterval: 30000,
+      staleTime: 60000
     }
   );
 
@@ -132,6 +138,19 @@ const Analytics = () => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    toast.error('Failed to load analytics data');
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error loading analytics</h3>
+          <p className="text-gray-500">Please try refreshing the page</p>
         </div>
       </div>
     );
@@ -238,7 +257,7 @@ const Analytics = () => {
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               {chartType === 'line' ? (
-                <LineChart data={mockTrendData}>
+                <LineChart data={analyticsData?.trends || []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
@@ -247,7 +266,7 @@ const Analytics = () => {
                   <Line type="monotone" dataKey="forecast" stroke="#10b981" strokeWidth={2} strokeDasharray="5 5" />
                 </LineChart>
               ) : chartType === 'area' ? (
-                <AreaChart data={mockTrendData}>
+                <AreaChart data={analyticsData?.trends || []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
@@ -256,7 +275,7 @@ const Analytics = () => {
                   <Area type="monotone" dataKey="savings" stackId="2" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
                 </AreaChart>
               ) : (
-                <BarChart data={mockTrendData}>
+                <BarChart data={analyticsData?.trends || []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
@@ -281,7 +300,7 @@ const Analytics = () => {
             <ResponsiveContainer width="100%" height="100%">
               <RechartsPieChart>
                 <Pie
-                  data={mockServiceData}
+                  data={analyticsData?.topServices || []}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -289,8 +308,8 @@ const Analytics = () => {
                   paddingAngle={5}
                   dataKey="cost"
                 >
-                  {mockServiceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {(analyticsData?.topServices || []).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color || serviceColors[index % serviceColors.length]} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Cost']} />
@@ -298,12 +317,12 @@ const Analytics = () => {
             </ResponsiveContainer>
           </div>
           <div className="mt-4 space-y-2">
-            {mockServiceData.map((service, index) => (
+            {(analyticsData?.topServices || []).map((service, index) => (
               <div key={index} className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div 
                     className="w-3 h-3 rounded-full mr-2" 
-                    style={{ backgroundColor: service.color }}
+                    style={{ backgroundColor: service.color || serviceColors[index % serviceColors.length] }}
                   ></div>
                   <span className="text-sm text-gray-600">{service.name}</span>
                 </div>

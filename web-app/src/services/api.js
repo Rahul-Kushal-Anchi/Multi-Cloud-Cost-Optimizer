@@ -1,8 +1,15 @@
 import axios from 'axios';
 
+// Get API base URL dynamically
+export const getApiBase = () => {
+  const { hostname } = window.location;
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  return isLocal ? 'http://localhost:8000/api' : '/api';
+};
+
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/api',
+  baseURL: process.env.REACT_APP_API_URL || getApiBase(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -104,63 +111,6 @@ export const costAPI = {
     api.put('/user/password', passwordData),
 };
 
-// Mock data for development
-export const mockAPI = {
-  getDashboardData: async (timeRange) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return {
-      data: {
-        totalCost: 12000,
-        monthlyCost: 12000,
-        dailyCost: 400,
-        savings: 2400,
-        alerts: 3,
-        optimizationScore: 85,
-        costTrend: 5.2,
-        forecast: 13000
-      }
-    };
-  },
-  
-  getCostData: async (params) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return {
-      data: [
-        { date: '2025-01-01', cost: 1200, service: 'EC2' },
-        { date: '2025-01-02', cost: 1350, service: 'RDS' },
-        { date: '2025-01-03', cost: 1100, service: 'S3' },
-        { date: '2025-01-04', cost: 1450, service: 'Lambda' },
-        { date: '2025-01-05', cost: 1300, service: 'EC2' }
-      ]
-    };
-  },
-  
-  getAlerts: async (params) => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    return {
-      data: [
-        {
-          id: '1',
-          type: 'cost_spike',
-          severity: 'high',
-          message: 'Cost increased by 200% in the last 24 hours',
-          timestamp: new Date().toISOString(),
-          status: 'active'
-        },
-        {
-          id: '2',
-          type: 'budget_exceeded',
-          severity: 'medium',
-          message: 'Monthly budget exceeded by 15%',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          status: 'active'
-        }
-      ]
-    };
-  }
-};
+// Always use real API
+export default costAPI;
 
-// Use mock data in development
-const isDevelopment = process.env.NODE_ENV === 'development';
-
-export default isDevelopment ? mockAPI : costAPI;

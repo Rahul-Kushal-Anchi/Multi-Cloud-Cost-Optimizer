@@ -10,30 +10,61 @@ const Login = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const getApiBase = () => {
+    return window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock authentication
-      const mockUser = {
-        id: '1',
-        name: 'John Doe',
-        email: formData.email,
-        role: 'admin'
-      };
+      const response = await fetch(`${getApiBase()}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
 
-      localStorage.setItem('token', 'mock-jwt-token');
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Server returned ${response.status}: ${text.substring(0, 200)}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || 'Invalid email or password');
+      }
+
+      if (!data.access_token) {
+        throw new Error('Invalid response from server: missing token');
+      }
+
+      localStorage.setItem('token', data.access_token);
+      if (data.tenant_id !== undefined && data.tenant_id !== null) {
+        localStorage.setItem('tenant_id', String(data.tenant_id));
+      } else {
+        localStorage.removeItem('tenant_id');
+      }
+      localStorage.setItem('user', JSON.stringify({ email: data.email, role: data.role }));
+
       toast.success('Login successful!');
-      window.location.reload();
-    } catch (error) {
-      toast.error('Login failed. Please try again.');
+      if (data.role === 'global_owner') {
+        window.location.href = '/dashboard';
+      } else {
+        window.location.href = '/connect';
+      }
+    } catch (err) {
+      const message = err?.message || 'Login failed. Please try again.';
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -168,16 +199,13 @@ const Login = () => {
                 'Sign in'
               )}
             </motion.button>
+            {error && (
+              <div className="p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-600">
+                {error}
+              </div>
+            )}
           </div>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800 font-medium mb-2">Demo Credentials:</p>
-            <p className="text-xs text-blue-600">
-              Email: admin@example.com<br />
-              Password: password123
-            </p>
-          </div>
         </motion.form>
 
         {/* Footer */}

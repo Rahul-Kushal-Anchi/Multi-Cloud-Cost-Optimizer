@@ -1,0 +1,39 @@
+name: Security and Code Quality
+on: [push, pull_request]
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 18 }
+      - run: cd web-app && npm ci && npm run lint
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: |
+          pip install ruff black
+          ruff . --exit-non-zero-on-fix || true
+          black --check .
+  trivy-fs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          format: table
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+  trivy-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          docker build -t api:ci api
+          docker build -t web:ci web-app
+      - uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: 'api:ci'
+          format: 'table'
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'

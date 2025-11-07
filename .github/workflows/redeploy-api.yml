@@ -1,0 +1,94 @@
+name: Redeploy API Service
+
+on:
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+    inputs:
+      service:
+        description: 'Service to redeploy'
+        required: true
+        default: 'api'
+        type: choice
+        options:
+          - api
+          - web
+          - both
+
+env:
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: aws-cost-optimizer-dev-cluster
+  ECS_SVC_API: aws-cost-optimizer-dev-api
+  ECS_SVC_WEB: aws-cost-optimizer-dev-web
+
+jobs:
+  redeploy:
+    name: Redeploy ECS Service
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Redeploy API Service
+        if: ${{ inputs.service == 'api' || inputs.service == 'both' }}
+        run: |
+          echo "🔄 Redeploying API service..."
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SVC_API }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+          
+          echo "⏳ Waiting for service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SVC_API }} \
+            --region ${{ env.AWS_REGION }}
+          
+          echo "✅ API service redeployed successfully!"
+
+      - name: Redeploy Web Service
+        if: ${{ inputs.service == 'web' || inputs.service == 'both' }}
+        run: |
+          echo "🔄 Redeploying Web service..."
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SVC_WEB }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+          
+          echo "⏳ Waiting for service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SVC_WEB }} \
+            --region ${{ env.AWS_REGION }}
+          
+          echo "✅ Web service redeployed successfully!"
+
+      - name: Get Service Status
+        run: |
+          echo "📊 Current service status:"
+          if [ "${{ inputs.service }}" == "api" ] || [ "${{ inputs.service }}" == "both" ]; then
+            aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services ${{ env.ECS_SVC_API }} \
+              --region ${{ env.AWS_REGION }} \
+              --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount}' \
+              --output table
+          fi
+          if [ "${{ inputs.service }}" == "web" ] || [ "${{ inputs.service }}" == "both" ]; then
+            aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services ${{ env.ECS_SVC_WEB }} \
+              --region ${{ env.AWS_REGION }} \
+              --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount}' \
+              --output table
+          fi
+

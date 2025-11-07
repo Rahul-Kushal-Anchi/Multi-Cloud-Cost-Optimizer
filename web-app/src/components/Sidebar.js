@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -11,52 +11,134 @@ import {
   TrendingUp,
   AlertTriangle,
   PieChart,
-  Activity
+  Activity,
+  Shield,
+  Cloud
 } from 'lucide-react';
 
+// System Status Component
+const SystemStatus = () => {
+  const [status, setStatus] = useState('checking');
+  const [message, setMessage] = useState('Checking...');
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const base = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
+        const response = await fetch(`${base}/healthz`);
+        if (response.ok) {
+          setStatus('operational');
+          setMessage('All systems operational');
+        } else {
+          setStatus('degraded');
+          setMessage('Some services degraded');
+        }
+      } catch (error) {
+        setStatus('down');
+        setMessage('System unavailable');
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const statusColor = {
+    operational: 'bg-green-500',
+    degraded: 'bg-yellow-500',
+    down: 'bg-red-500',
+    checking: 'bg-gray-500'
+  };
+
+  const textColor = {
+    operational: 'text-green-600',
+    degraded: 'text-yellow-600',
+    down: 'text-red-600',
+    checking: 'text-gray-600'
+  };
+
+  return (
+    <div className="p-4 border-t border-gray-200">
+      <div className="flex items-center space-x-3">
+        <div className={`w-8 h-8 ${statusColor[status]} rounded-full flex items-center justify-center`}>
+          <Activity className="h-4 w-4 text-white" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-900">System Status</p>
+          <p className={`text-xs ${textColor[status]}`}>{message}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Sidebar = ({ isOpen, onClose }) => {
-  const navigation = [
+  // Get user role from localStorage
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const role = user?.role || 'member';
+
+  // Base navigation items
+  const baseNavigation = [
     {
       name: 'Dashboard',
       href: '/dashboard',
       icon: Home,
-      description: 'Overview and key metrics'
+      description: 'Overview and key metrics',
+      roles: ['global_owner', 'owner', 'admin', 'member']
     },
     {
       name: 'Analytics',
       href: '/analytics',
       icon: BarChart3,
-      description: 'Detailed cost analysis'
+      description: 'Detailed cost analysis',
+      roles: ['global_owner', 'owner', 'admin', 'member']
     },
     {
-      name: 'Cost Breakdown',
-      href: '/cost-breakdown',
-      icon: PieChart,
-      description: 'Service-wise cost analysis'
-    },
-    {
-      name: 'Trends',
-      href: '/trends',
-      icon: TrendingUp,
-      description: 'Cost trends and forecasting'
+      name: 'Optimizations',
+      href: '/optimizations',
+      icon: Activity,
+      description: 'Cost optimization recommendations',
+      roles: ['global_owner', 'owner', 'admin', 'member']
     },
     {
       name: 'Alerts',
       href: '/alerts',
       icon: Bell,
-      description: 'Cost alerts and notifications'
+      description: 'Cost alerts and notifications',
+      roles: ['global_owner', 'owner', 'admin', 'member']
+    }
+  ];
+
+  // Role-specific navigation items
+  const adminNavigation = [
+    {
+      name: 'Admin',
+      href: '/admin',
+      icon: Shield,
+      description: 'Manage tenants and platform',
+      roles: ['global_owner']
     },
     {
-      name: 'Optimization',
-      href: '/optimization',
-      icon: Activity,
-      description: 'Cost optimization recommendations'
-    },
+      name: 'Connect AWS',
+      href: '/connect',
+      icon: Cloud,
+      description: 'Connect your AWS account',
+      roles: ['owner', 'admin']
+    }
+  ];
+
+  // Filter navigation based on role
+  const navigation = [
+    ...baseNavigation.filter(item => item.roles.includes(role)),
+    ...adminNavigation.filter(item => item.roles.includes(role)),
     {
       name: 'Settings',
       href: '/settings',
       icon: Settings,
-      description: 'Application settings'
+      description: 'Application settings',
+      roles: ['global_owner', 'owner', 'admin', 'member']
     }
   ];
 
@@ -82,15 +164,14 @@ const Sidebar = ({ isOpen, onClose }) => {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ x: -300 }}
-            animate={{ x: 0 }}
-            exit={{ x: -300 }}
-            transition={{ type: 'tween', duration: 0.3 }}
-            className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg lg:translate-x-0 lg:static lg:inset-0"
-          >
+      {isOpen && (
+        <motion.div
+          initial={{ x: -300 }}
+          animate={{ x: 0 }}
+          exit={{ x: -300 }}
+          transition={{ type: 'tween', duration: 0.3 }}
+          className="fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg lg:translate-x-0 lg:static lg:inset-0 transition-colors"
+        >
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -164,21 +245,10 @@ const Sidebar = ({ isOpen, onClose }) => {
               </nav>
 
               {/* Footer */}
-              <div className="p-4 border-t border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                    <Activity className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">System Status</p>
-                    <p className="text-xs text-green-600">All systems operational</p>
-                  </div>
-                </div>
-              </div>
+              <SystemStatus />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </motion.div>
+      )}
     </>
   );
 };

@@ -8,36 +8,17 @@ import {
   Activity,
   Server,
   Database,
-  Cloud
+  Cloud,
+  Download
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { useQuery } from 'react-query';
 import toast from 'react-hot-toast';
+import { exportDashboardData } from '../utils/export';
+import { costAPI } from '../services/api';
 
-// Mock data for demonstration
-const mockCostData = [
-  { date: '2025-01-01', cost: 1200, forecast: 1250 },
-  { date: '2025-01-02', cost: 1350, forecast: 1300 },
-  { date: '2025-01-03', cost: 1100, forecast: 1280 },
-  { date: '2025-01-04', cost: 1450, forecast: 1320 },
-  { date: '2025-01-05', cost: 1300, forecast: 1350 },
-  { date: '2025-01-06', cost: 1600, forecast: 1380 },
-  { date: '2025-01-07', cost: 1400, forecast: 1400 }
-];
-
-const mockServiceData = [
-  { name: 'EC2', value: 45, cost: 5400, color: '#8884d8' },
-  { name: 'RDS', value: 25, cost: 3000, color: '#82ca9d' },
-  { name: 'S3', value: 15, cost: 1800, color: '#ffc658' },
-  { name: 'Lambda', value: 10, cost: 1200, color: '#ff7300' },
-  { name: 'Other', value: 5, cost: 600, color: '#00ff00' }
-];
-
-const mockOptimizationData = [
-  { service: 'EC2', current: 5400, optimized: 4320, savings: 1080 },
-  { service: 'RDS', current: 3000, optimized: 2400, savings: 600 },
-  { service: 'S3', current: 1800, optimized: 1440, savings: 360 }
-];
+// Color palette for services
+const serviceColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#0088FE', '#00C49F', '#FFBB28'];
 
 const Dashboard = () => {
   const [timeRange, setTimeRange] = useState('7d');
@@ -47,24 +28,59 @@ const Dashboard = () => {
   const { data: dashboardData, isLoading, error } = useQuery(
     ['dashboard', timeRange],
     async () => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        totalCost: 12000,
-        monthlyCost: 12000,
-        dailyCost: 400,
-        savings: 2400,
-        alerts: 3,
-        optimizationScore: 85,
-        costTrend: 5.2,
-        forecast: 13000
-      };
+      const response = await costAPI.getDashboardData(timeRange);
+      return response.data;
     },
     {
       refetchInterval: 30000, // Refetch every 30 seconds
       staleTime: 10000 // Consider data stale after 10 seconds
     }
   );
+
+  // Fetch cost trends for the chart
+  const { data: costTrendsData } = useQuery(
+    ['costTrends', timeRange],
+    async () => {
+      const response = await costAPI.getCostTrends(timeRange);
+      return response.data.data || [];
+    },
+    {
+      refetchInterval: 30000,
+      staleTime: 10000
+    }
+  );
+
+  // Fetch service breakdown for the pie chart
+  const { data: serviceBreakdownData } = useQuery(
+    ['serviceBreakdown', timeRange],
+    async () => {
+      const response = await costAPI.getServiceBreakdown(timeRange);
+      return response.data.services || [];
+    },
+    {
+      refetchInterval: 30000,
+      staleTime: 10000
+    }
+  );
+
+  // Prepare cost data for chart (use real data only)
+  const chartData = costTrendsData && costTrendsData.length > 0 
+    ? costTrendsData.map(item => ({
+        date: item.date,
+        cost: item.cost || 0,
+        forecast: item.forecast || item.cost * 1.08 // Calculate forecast if not provided
+      }))
+    : [];
+
+  // Prepare service data for pie chart (use real data only)
+  const pieChartData = serviceBreakdownData && serviceBreakdownData.length > 0
+    ? serviceBreakdownData.map((service, index) => ({
+        name: service.name,
+        value: service.percentage || 0,
+        cost: service.cost || 0,
+        color: serviceColors[index % serviceColors.length]
+      }))
+    : [];
 
   const metrics = [
     {
@@ -141,8 +157,20 @@ const Dashboard = () => {
     <div className="p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Cost Dashboard</h1>
-        <p className="text-gray-600">Monitor and optimize your AWS costs in real-time</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Cost Dashboard</h1>
+            <p className="text-gray-600">Monitor and optimize your AWS costs in real-time</p>
+          </div>
+          <button
+            onClick={() => exportDashboardData(dashboardData)}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            title="Export dashboard data"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            <span>Export</span>
+          </button>
+        </div>
       </div>
 
       {/* Metrics Grid */}
@@ -207,29 +235,38 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockCostData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="cost" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  name="Actual Cost"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="forecast" 
-                  stroke="#10b981" 
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  name="Forecast"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line 
+                    type="monotone" 
+                    dataKey="cost" 
+                    stroke="#3b82f6" 
+                    strokeWidth={2}
+                    name="Actual Cost"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="forecast" 
+                    stroke="#10b981" 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    name="Forecast"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="text-center">
+                  <p className="mb-2">No cost data available</p>
+                  <p className="text-sm">Connect your AWS account to see cost trends</p>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -241,46 +278,57 @@ const Dashboard = () => {
           className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"
         >
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Breakdown</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={mockServiceData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={120}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {mockServiceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value, name) => [`${value}%`, name]} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 space-y-2">
-            {mockServiceData.map((service, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div 
-                    className="w-3 h-3 rounded-full mr-2" 
-                    style={{ backgroundColor: service.color }}
-                  ></div>
-                  <span className="text-sm text-gray-600">{service.name}</span>
-                </div>
-                <span className="text-sm font-medium text-gray-900">
-                  ${service.cost.toLocaleString()}
-                </span>
+          {pieChartData.length > 0 ? (
+            <>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={120}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {pieChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value, name) => [`${value}%`, name]} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
+              <div className="mt-4 space-y-2">
+                {pieChartData.map((service, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: service.color }}
+                      ></div>
+                      <span className="text-sm text-gray-600">{service.name}</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">
+                      ${service.cost.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-80 text-gray-500">
+              <div className="text-center">
+                <p className="mb-2">No service data available</p>
+                <p className="text-sm">Connect your AWS account to see service breakdown</p>
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
 
-      {/* Optimization Opportunities */}
+      {/* Optimization Opportunities - Link to Optimizations page */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -289,19 +337,21 @@ const Dashboard = () => {
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Optimization Opportunities</h3>
-          <span className="text-sm text-gray-500">Potential savings: $2,040/month</span>
+          <a 
+            href="/optimizations" 
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            View All →
+          </a>
         </div>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={mockOptimizationData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="service" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="current" fill="#ef4444" name="Current Cost" />
-              <Bar dataKey="optimized" fill="#10b981" name="Optimized Cost" />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="text-center py-8">
+          <p className="text-gray-500 mb-4">View detailed optimization recommendations</p>
+          <a 
+            href="/optimizations"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Optimizations
+          </a>
         </div>
       </motion.div>
     </div>
