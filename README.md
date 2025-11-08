@@ -128,6 +128,51 @@ Visit `http://localhost:5173` – the login page supports both sign-in and new-a
 
 ---
 
+## 🏗️ Current Architecture
+
+```
+┌──────────────┐         ┌────────────────────┐         ┌──────────────────────────┐
+│   Browser    │  HTTPS  │  AWS ALB (public)  │  ┌─────▶│  ECS Service: Web (SPA)  │
+│ (Tenant User │────────▶│  Route to /, /api  │──┘      └──────────────────────────┘
+│  or Admin)   │         └────────┬───────────┘
+└──────────────┘                  │
+                                  │
+                                  ▼
+                       ┌──────────────────────────┐
+                       │ ECS Service: API (FastAPI)│
+                       │  • Auth & onboarding      │
+                       │  • Settings, dashboards   │
+                       │  • Tenant AWS integration │
+                       └───────┬──────────┬───────┘
+                               │          │
+                               │          │
+                               │     ┌────▼─────────────────┐
+                               │     │ PostgreSQL (RDS/RDS   │
+                               │     │ Proxy/local dev)      │
+                               │     └───────────────────────┘
+                               │
+                               ▼
+                     AssumeRole (STS) into tenant account
+                               │
+           ┌───────────────────┴──────────────────┐
+           │                                      │
+┌────────────────────────────┐        ┌────────────────────────────┐
+│ AWS Athena (CUR in S3)      │        │ AWS Cost Explorer API       │
+│ • Service breakdowns        │        │ • (Optional) trend data     │
+│ • Daily spend, insights     │        └────────────────────────────┘
+└────────────────────────────┘
+```
+
+**Data lifecycle**
+
+1. User signs in → React SPA calls FastAPI (`/api/auth/login`).
+2. FastAPI queries PostgreSQL for tenant/user records.
+3. When cost data is requested, FastAPI assumes the tenant’s cross-account IAM role.
+4. Temporary credentials run Athena SQL against the tenant’s CUR database/table and (optionally) Cost Explorer APIs.
+5. Responses are returned to the SPA; contexts/cache keep the UI in sync (navbar, sidebar quick stats, dashboards, alerts).
+
+---
+
 ## ☁️ Production Deployment (AWS ECS)
 
 The repo ships with `build_and_deploy.sh`, which:
