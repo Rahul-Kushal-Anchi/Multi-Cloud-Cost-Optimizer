@@ -8,8 +8,13 @@ import uuid
 import json
 
 from .models import Tenant, User, AuditLog
-from .current import require_owner, require_admin, require_global_owner, CurrentContext, get_current_ctx
-from .routes import get_session
+from .current import require_admin, require_global_owner, CurrentContext, get_current_ctx
+from .routes import get_session, ConnectAWSRequest
+
+try:
+    from api.secure.aws.assume_role import assume_vendor_role
+except ImportError:
+    from secure.aws.assume_role import assume_vendor_role
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -24,6 +29,16 @@ class TenantListResponse(BaseModel):
     hasConnection: bool
     created_at: datetime
     user_count: int
+    aws_role_arn: Optional[str] = None
+    external_id: Optional[str] = None
+    cur_bucket: Optional[str] = None
+    cur_prefix: Optional[str] = None
+    athena_workgroup: Optional[str] = None
+    athena_db: Optional[str] = None
+    athena_table: Optional[str] = None
+    athena_results_bucket: Optional[str] = None
+    athena_results_prefix: Optional[str] = None
+    region: Optional[str] = None
 
 
 @router.get("/tenants")
@@ -51,7 +66,17 @@ def list_tenants(
                 tenant.aws_role_arn and tenant.athena_db and tenant.athena_table
             ),
             created_at=tenant.created_at,
-            user_count=len(user_count)
+            user_count=len(user_count),
+            aws_role_arn=tenant.aws_role_arn,
+            external_id=tenant.external_id,
+            cur_bucket=tenant.cur_bucket,
+            cur_prefix=tenant.cur_prefix,
+            athena_workgroup=tenant.athena_workgroup,
+            athena_db=tenant.athena_db,
+            athena_table=tenant.athena_table,
+            athena_results_bucket=tenant.athena_results_bucket,
+            athena_results_prefix=tenant.athena_results_prefix,
+            region=tenant.region
         ))
     
     return result
@@ -91,6 +116,69 @@ def rotate_external_id(
         "tenant_id": tenant_id,
         "new_external_id": new_external_id,
         "message": "External ID rotated successfully. Client must update their CloudFormation stack."
+    }
+
+
+@router.post("/tenants/{tenant_id}/aws-connection")
+def update_tenant_aws_connection(
+    tenant_id: int,
+    request: ConnectAWSRequest,
+    authorization: str = Header(...),
+    session: Session = Depends(get_session)
+):
+    """
+    Configure AWS CUR connection details for a tenant (global owner only).
+    Validates the role by performing an STS GetCallerIdentity call via AssumeRole.
+    """
+    ctx = require_global_owner(authorization, session)
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Validate AssumeRole works before persisting
+    try:
+        aws_session = assume_vendor_role(
+            request.aws_role_arn,
+            request.external_id,
+            request.region or tenant.region or "us-east-1"
+        )
+        sts = aws_session.client("sts", region_name=request.region or tenant.region or "us-east-1")
+        sts.get_caller_identity()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot AssumeRole with provided credentials: {exc}"
+        )
+
+    # Update tenant fields
+    tenant.aws_role_arn = request.aws_role_arn
+    tenant.external_id = request.external_id
+    tenant.cur_bucket = request.cur_bucket
+    tenant.cur_prefix = request.cur_prefix
+    tenant.athena_workgroup = request.athena_workgroup
+    tenant.athena_db = request.athena_db
+    tenant.athena_table = request.athena_table
+    tenant.athena_results_bucket = request.athena_results_bucket
+    tenant.athena_results_prefix = request.athena_results_prefix
+    tenant.region = request.region
+
+    session.add(tenant)
+
+    audit = AuditLog(
+        tenant_id=tenant_id,
+        actor_user_id=ctx.user_id,
+        action="update_aws_connection",
+        action_metadata=json.dumps({"updated_by": ctx.user_email})
+    )
+    session.add(audit)
+    session.commit()
+    session.refresh(tenant)
+
+    return {
+        "ok": True,
+        "tenant_id": tenant_id,
+        "message": "AWS connection saved successfully.",
+        "hasConnection": True
     }
 
 

@@ -109,6 +109,16 @@ export const costAPI = {
   
   changePassword: (passwordData) => 
     api.put('/user/password', passwordData),
+
+  // Auth
+  login: (credentials) =>
+    api.post('/auth/login', credentials),
+
+  signup: (payload) =>
+    api.post('/auth/signup', payload),
+
+  post: (path, body) =>
+    api.post(path, body),
 };
 
 // Always use real API

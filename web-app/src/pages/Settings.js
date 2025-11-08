@@ -15,6 +15,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';
 import { costAPI } from '../services/api';
+import { useAuth } from '../services/auth';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -38,6 +39,18 @@ const Settings = () => {
     }
   });
 
+  const queryClient = useQueryClient();
+  const { changePassword, refreshProfile } = useAuth();
+
+  // Fetch user settings
+  const { data: settings, isLoading } = useQuery(
+    'settings',
+    async () => {
+      const response = await costAPI.getSettings();
+      return response.data;
+    }
+  );
+
   // Update form data when settings are loaded
   useEffect(() => {
     if (settings) {
@@ -51,17 +64,6 @@ const Settings = () => {
     }
   }, [settings]);
 
-  const queryClient = useQueryClient();
-
-  // Fetch user settings
-  const { data: settings, isLoading } = useQuery(
-    'settings',
-    async () => {
-      const response = await costAPI.getSettings();
-      return response.data;
-    }
-  );
-
   // Update settings
   const updateSettingsMutation = useMutation(
     async (newSettings) => {
@@ -69,19 +71,22 @@ const Settings = () => {
       return response.data;
     },
     {
-      onSuccess: () => {
+      onSuccess: async () => {
+        await refreshProfile();
         queryClient.invalidateQueries('settings');
         toast.success('Settings updated successfully');
       },
-      onError: () => {
-        toast.error('Failed to update settings');
+      onError: (error) => {
+        console.error('Failed to update settings', error);
+        toast.error(error?.response?.data?.detail || 'Failed to update settings');
       }
     }
   );
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    updateSettingsMutation.mutate({
+
+    const payload = {
       notifications: formData.notifications,
       alerts: formData.alerts,
       preferences: {
@@ -94,7 +99,36 @@ const Settings = () => {
         name: formData.name,
         email: formData.email
       }
-    });
+    };
+
+    try {
+      await updateSettingsMutation.mutateAsync(payload);
+
+      if (formData.currentPassword || formData.newPassword || formData.confirmPassword) {
+        if (!formData.currentPassword) {
+          throw new Error('Current password is required to change password');
+        }
+        if (formData.newPassword !== formData.confirmPassword) {
+          throw new Error('New password and confirmation do not match');
+        }
+
+        const passwordResult = await changePassword(formData.currentPassword, formData.newPassword);
+        if (!passwordResult.success) {
+          throw new Error(passwordResult.error || 'Failed to change password');
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        }));
+      }
+    } catch (error) {
+      if (error?.message) {
+        toast.error(error.message);
+      }
+    }
   };
 
   const handleChange = (e) => {

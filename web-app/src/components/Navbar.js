@@ -13,9 +13,9 @@ import {
   Sun,
   Moon
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../services/auth';
 
 const Navbar = ({ onMenuClick, user, connectionStatus, isOnline }) => {
   const [notifications, setNotifications] = useState([]);
@@ -23,6 +23,7 @@ const Navbar = ({ onMenuClick, user, connectionStatus, isOnline }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [theme, toggleTheme] = useTheme();
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -36,10 +37,8 @@ const Navbar = ({ onMenuClick, user, connectionStatus, isOnline }) => {
   }, [showUserMenu]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    toast.success('Logged out successfully');
-    window.location.reload();
+    logout();
+    navigate('/login', { replace: true });
   };
 
   const getConnectionIcon = () => {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import costAPI from '../services/api';
 
 export default function ConnectAWS() {
   const navigate = useNavigate();
@@ -8,6 +9,7 @@ export default function ConnectAWS() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
   const [hasConnection, setHasConnection] = useState(false);
+  const [curBucketOptional, setCurBucketOptional] = useState(false);
   const [formData, setFormData] = useState({
     aws_role_arn: '',
     external_id: '',
@@ -35,8 +37,16 @@ export default function ConnectAWS() {
       });
       const data = await response.json();
       setHasConnection(data.tenant?.hasConnection || false);
+
       if (data.tenant?.hasConnection) {
         toast.success('AWS connection already configured');
+      }
+
+      if (data.tenant?.aws_configuration) {
+        setFormData((prev) => ({
+          ...prev,
+          ...data.tenant.aws_configuration
+        }));
       }
     } catch (error) {
       console.error('Error checking connection:', error);
@@ -57,18 +67,23 @@ export default function ConnectAWS() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/tenants/connect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
+      const payload = {
+        aws_role_arn: formData.aws_role_arn,
+        external_id: formData.external_id,
+        region: formData.region,
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to save connection');
+      if (!curBucketOptional || formData.cur_bucket) {
+        payload.cur_bucket = formData.cur_bucket;
       }
+      if (formData.cur_prefix) payload.cur_prefix = formData.cur_prefix;
+      if (formData.athena_workgroup) payload.athena_workgroup = formData.athena_workgroup;
+      if (formData.athena_db) payload.athena_db = formData.athena_db;
+      if (formData.athena_table) payload.athena_table = formData.athena_table;
+      if (formData.athena_results_bucket) payload.athena_results_bucket = formData.athena_results_bucket;
+      if (formData.athena_results_prefix) payload.athena_results_prefix = formData.athena_results_prefix;
+
+      await costAPI.post('/tenants/connect', payload);
 
       setSaved(true);
       setHasConnection(true);
@@ -83,6 +98,8 @@ export default function ConnectAWS() {
       setLoading(false);
     }
   }
+
+  const inputClasses = "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors";
 
   if (hasConnection) {
     return (
@@ -120,13 +137,34 @@ export default function ConnectAWS() {
     }}>
       <h2 style={{ marginBottom: 20 }}>Connect AWS Billing</h2>
 
-      <div style={{ background: '#eff6ff', padding: 15, borderRadius: 8, marginBottom: 20 }}>
-        <h4 style={{ marginBottom: 10 }}>Setup Instructions:</h4>
-        <ol style={{ marginLeft: 20 }}>
-          <li style={{ marginBottom: 10 }}>Deploy our CloudFormation stack in your AWS account (read-only role)</li>
-          <li style={{ marginBottom: 10 }}>Get the Role ARN and External ID from the stack outputs</li>
-          <li>Enter your AWS billing connection details below</li>
+      <div className="bg-blue-50 border border-blue-100 rounded-lg p-5 mb-6">
+        <h4 className="text-sm font-semibold text-blue-700 mb-3">Setup Instructions</h4>
+        <ol className="list-decimal list-inside text-sm text-blue-800 space-y-2">
+          <li>Click <strong>Launch Stack</strong> to deploy our CloudFormation template in your AWS account (read-only access only).</li>
+          <li>After the stack finishes, copy the <strong>RoleArn</strong> and <strong>ExternalId</strong> from the stack outputs.</li>
+          <li>Paste them below, choose your CUR bucket/region if different, and save the connection.</li>
         </ol>
+        <a
+          href="https://console.aws.amazon.com/cloudformation/home#/stacks/create/template?templateURL=https://YOUR-S3-BUCKET/cur-onboarding-template.yaml"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Launch AWS CloudFormation Stack
+        </a>
+      </div>
+
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+        <h4 className="text-sm font-semibold text-gray-700 mb-2">Default values</h4>
+        <p className="text-xs text-gray-600">
+          If you use our CloudFormation template, the following defaults are created automatically:
+        </p>
+        <ul className="list-disc list-inside text-xs text-gray-600 space-y-1 mt-2">
+          <li>CUR prefix: <code>cur/</code></li>
+          <li>Athena workgroup: <code>primary</code></li>
+          <li>Athena results prefix: <code>athena-results/</code></li>
+          <li>Region: <code>us-east-1</code></li>
+        </ul>
       </div>
 
       {err && (
@@ -142,28 +180,136 @@ export default function ConnectAWS() {
       )}
 
       <form onSubmit={handleSubmit}>
-        {Object.keys(formData).map(key => (
-          <div key={key} style={{ marginBottom: 15 }}>
-            <label style={{ display: 'block', marginBottom: 5 }}>
-              {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">AWS Role ARN*</label>
+            <input
+              type="text"
+              name="aws_role_arn"
+              value={formData.aws_role_arn}
+              onChange={handleChange}
+              required
+              placeholder="arn:aws:iam::123456789012:role/CostOptimizerAccess"
+              className={inputClasses}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">External ID*</label>
+            <input
+              type="text"
+              name="external_id"
+              value={formData.external_id}
+              onChange={handleChange}
+              required
+              placeholder="Copy from CloudFormation outputs"
+              className={inputClasses}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Region*</label>
+            <input
+              type="text"
+              name="region"
+              value={formData.region}
+              onChange={handleChange}
+              required
+              placeholder="us-east-1"
+              className={inputClasses}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              CUR Bucket
+              <span className="text-xs text-gray-500 ml-2">(leave blank if CloudFormation created this)</span>
             </label>
             <input
               type="text"
-              name={key}
-              value={formData[key]}
+              name="cur_bucket"
+              value={formData.cur_bucket}
               onChange={handleChange}
-              required
-              placeholder={`Enter ${key}`}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ccc',
-                borderRadius: 6,
-                fontSize: 14
-              }}
+              disabled={curBucketOptional}
+              placeholder="my-cur-bucket"
+              className={`${inputClasses} ${curBucketOptional ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            />
+            <div className="mt-2 flex items-center text-xs text-gray-600">
+              <input
+                id="skip-cur-bucket"
+                type="checkbox"
+                checked={curBucketOptional}
+                onChange={(event) => setCurBucketOptional(event.target.checked)}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="skip-cur-bucket" className="ml-2">
+                Use the default bucket created by the CloudFormation template
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CUR Prefix</label>
+            <input
+              type="text"
+              name="cur_prefix"
+              value={formData.cur_prefix}
+              onChange={handleChange}
+              className={inputClasses}
             />
           </div>
-        ))}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Athena Workgroup</label>
+            <input
+              type="text"
+              name="athena_workgroup"
+              value={formData.athena_workgroup}
+              onChange={handleChange}
+              className={inputClasses}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Athena Database</label>
+            <input
+              type="text"
+              name="athena_db"
+              value={formData.athena_db}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="Optional – leave blank if default"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Athena Table</label>
+            <input
+              type="text"
+              name="athena_table"
+              value={formData.athena_table}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="Optional – leave blank if default"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Athena Results Bucket</label>
+            <input
+              type="text"
+              name="athena_results_bucket"
+              value={formData.athena_results_bucket}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="Optional – leave blank if default"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Athena Results Prefix</label>
+            <input
+              type="text"
+              name="athena_results_prefix"
+              value={formData.athena_results_prefix}
+              onChange={handleChange}
+              className={inputClasses}
+            />
+          </div>
+        </div>
 
         <button
           type="submit"

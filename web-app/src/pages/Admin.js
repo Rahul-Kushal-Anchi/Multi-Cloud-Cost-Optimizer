@@ -18,6 +18,19 @@ import { getApiBase } from '../services/api';
 const Admin = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [connectTenant, setConnectTenant] = useState(null);
+  const [awsForm, setAwsForm] = useState({
+    aws_role_arn: '',
+    external_id: '',
+    cur_bucket: '',
+    cur_prefix: 'cur/',
+    athena_workgroup: 'primary',
+    athena_db: '',
+    athena_table: '',
+    athena_results_bucket: '',
+    athena_results_prefix: 'athena-results/',
+    region: 'us-east-1'
+  });
   const queryClient = useQueryClient();
 
   // Fetch tenants
@@ -39,6 +52,65 @@ const Admin = () => {
       return response.json();
     }
   );
+
+  const connectAwsMutation = useMutation(
+    async ({ tenantId, payload }) => {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${getApiBase()}/admin/tenants/${tenantId}/aws-connection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody?.detail || 'Failed to save AWS connection');
+      }
+      return response.json();
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('admin-tenants');
+        toast.success('AWS connection saved successfully');
+        setConnectTenant(null);
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to save AWS connection');
+      }
+    }
+  );
+
+  const handleOpenConnect = (tenant) => {
+    setAwsForm({
+      aws_role_arn: tenant.aws_role_arn || '',
+      external_id: tenant.external_id || '',
+      cur_bucket: tenant.cur_bucket || '',
+      cur_prefix: tenant.cur_prefix || 'cur/',
+      athena_workgroup: tenant.athena_workgroup || 'primary',
+      athena_db: tenant.athena_db || '',
+      athena_table: tenant.athena_table || '',
+      athena_results_bucket: tenant.athena_results_bucket || '',
+      athena_results_prefix: tenant.athena_results_prefix || 'athena-results/',
+      region: tenant.region || 'us-east-1'
+    });
+    setConnectTenant(tenant);
+  };
+
+  const handleAwsFormChange = (event) => {
+    const { name, value } = event.target;
+    setAwsForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleConnectSubmit = (event) => {
+    event.preventDefault();
+    if (!connectTenant) return;
+    connectAwsMutation.mutate({
+      tenantId: connectTenant.id,
+      payload: awsForm
+    });
+  };
 
   // Rotate external ID mutation
   const rotateExternalIdMutation = useMutation(
@@ -303,6 +375,13 @@ const Admin = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => handleOpenConnect(tenant)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                          title={tenant.hasConnection ? 'Edit AWS connection' : 'Connect AWS'}
+                        >
+                          <Key className="h-4 w-4" />
+                        </button>
                         {tenant.status === 'active' ? (
                           <button
                             onClick={() => toggleStatusMutation.mutate({ tenantId: tenant.id, action: 'disable' })}
@@ -337,6 +416,162 @@ const Admin = () => {
           </table>
         </div>
       </div>
+
+      {connectTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {connectTenant.hasConnection ? 'Update AWS Connection' : 'Connect AWS Billing'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Configure Cost & Usage Report access for <span className="font-medium">{connectTenant.name}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setConnectTenant(null)}
+                className="text-gray-400 hover:text-gray-600 text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+
+            <form onSubmit={handleConnectSubmit} className="px-6 py-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Cross-account role</h4>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">AWS Role ARN</label>
+                  <input
+                    name="aws_role_arn"
+                    value={awsForm.aws_role_arn}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">External ID</label>
+                  <input
+                    name="external_id"
+                    value={awsForm.external_id}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Region</label>
+                  <input
+                    name="region"
+                    value={awsForm.region}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="md:col-span-2 pt-2">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Cost & Usage Report (S3)</h4>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">CUR Bucket</label>
+                  <input
+                    name="cur_bucket"
+                    value={awsForm.cur_bucket}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">CUR Prefix</label>
+                  <input
+                    name="cur_prefix"
+                    value={awsForm.cur_prefix}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="md:col-span-2 pt-2">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Athena configuration</h4>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Workgroup</label>
+                  <input
+                    name="athena_workgroup"
+                    value={awsForm.athena_workgroup}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Database</label>
+                  <input
+                    name="athena_db"
+                    value={awsForm.athena_db}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Table</label>
+                  <input
+                    name="athena_table"
+                    value={awsForm.athena_table}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Results Bucket</label>
+                  <input
+                    name="athena_results_bucket"
+                    value={awsForm.athena_results_bucket}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Results Prefix</label>
+                  <input
+                    name="athena_results_prefix"
+                    value={awsForm.athena_results_prefix}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 border-t border-gray-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setConnectTenant(null)}
+                  className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={connectAwsMutation.isLoading}
+                  className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {connectAwsMutation.isLoading ? 'Saving…' : 'Save Connection'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

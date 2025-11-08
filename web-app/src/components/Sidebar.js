@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -15,6 +15,7 @@ import {
   Shield,
   Cloud
 } from 'lucide-react';
+import { useDashboardMetrics } from '../contexts/DashboardMetricsContext';
 
 // System Status Component
 const SystemStatus = () => {
@@ -142,11 +143,44 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   ];
 
-  const quickStats = [
-    { label: 'Monthly Spend', value: '$12,450', change: '+5.2%', trend: 'up' },
-    { label: 'Savings', value: '$2,100', change: '+12.1%', trend: 'up' },
-    { label: 'Alerts', value: '3', change: '-1', trend: 'down' }
-  ];
+  const { metrics, isLoading: metricsLoading, error: metricsError } = useDashboardMetrics();
+
+  const quickStats = useMemo(() => {
+    if (!metrics) return [];
+
+    const formatCurrency = (value) =>
+      typeof value === 'number'
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
+        : '—';
+
+    const monthlySpend = metrics?.monthlyCost ?? metrics?.totalCost ?? null;
+    const forecast = metrics?.forecast;
+    let monthlyChange = '—';
+    let monthlyTrend = 'neutral';
+    if (typeof monthlySpend === 'number' && typeof forecast === 'number' && monthlySpend > 0) {
+      const diff = forecast - monthlySpend;
+      const pct = (diff / monthlySpend) * 100;
+      monthlyChange = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+      monthlyTrend = pct >= 0 ? 'up' : 'down';
+    }
+
+    const savings = metrics?.savings ?? null;
+    let savingsChange = '—';
+    let savingsTrend = 'neutral';
+    if (typeof savings === 'number' && monthlySpend) {
+      const pct = (savings / monthlySpend) * 100;
+      savingsChange = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+      savingsTrend = pct >= 0 ? 'up' : 'down';
+    }
+
+    const alerts = typeof metrics?.alerts === 'number' ? metrics.alerts : '—';
+
+    return [
+      { label: 'Monthly Spend', value: formatCurrency(monthlySpend), change: monthlyChange, trend: monthlyTrend },
+      { label: 'Savings', value: formatCurrency(savings), change: savingsChange, trend: savingsTrend },
+      { label: 'Alerts', value: alerts, change: '—', trend: 'neutral' }
+    ];
+  }, [metrics]);
 
   return (
     <>
@@ -195,26 +229,52 @@ const Sidebar = ({ isOpen, onClose }) => {
               {/* Quick Stats */}
               <div className="p-4 border-b border-gray-200">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Stats</h3>
-                <div className="space-y-3">
-                  {quickStats.map((stat, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-gray-500">{stat.label}</p>
-                        <p className="text-sm font-semibold text-gray-900">{stat.value}</p>
+                {metricsLoading ? (
+                  <div className="space-y-3 animate-pulse">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="h-3 w-20 bg-gray-200 rounded" />
+                          <div className="h-4 w-24 bg-gray-300 rounded" />
+                        </div>
+                        <div className="h-3 w-10 bg-gray-200 rounded" />
                       </div>
-                      <div className={`flex items-center text-xs ${
-                        stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        <span className="mr-1">{stat.change}</span>
-                        {stat.trend === 'up' ? (
-                          <TrendingUp className="h-3 w-3" />
-                        ) : (
-                          <TrendingUp className="h-3 w-3 rotate-180" />
-                        )}
+                    ))}
+                  </div>
+                ) : metricsError ? (
+                  <div className="text-xs text-red-600">
+                    Unable to load metrics. Connect AWS to view live data.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {quickStats.map((stat, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-500">{stat.label}</p>
+                          <p className="text-sm font-semibold text-gray-900">{stat.value}</p>
+                        </div>
+                        <div
+                          className={`flex items-center text-xs ${
+                            stat.trend === 'up'
+                              ? 'text-green-600'
+                              : stat.trend === 'down'
+                              ? 'text-red-600'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          <span className="mr-1">{stat.change}</span>
+                          {stat.trend === 'neutral' ? (
+                            <AlertTriangle className="h-3 w-3 text-gray-400" />
+                          ) : stat.trend === 'up' ? (
+                            <TrendingUp className="h-3 w-3" />
+                          ) : (
+                            <TrendingUp className="h-3 w-3 rotate-180" />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Navigation */}

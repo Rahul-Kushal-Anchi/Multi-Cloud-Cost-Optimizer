@@ -1,5 +1,18 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import toast from 'react-hot-toast';
+import costAPI from './api';
+
+const normalizeUser = (payload = {}) => {
+  if (!payload) return null;
+  const email = payload.email || '';
+  return {
+    id: payload.id,
+    name: payload.name || (email ? email.split('@')[0] : ''),
+    email,
+    role: payload.role || 'member',
+    settings: payload.settings || null,
+  };
+};
 
 const AuthContext = createContext();
 
@@ -16,57 +29,87 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
+    const hydrateUser = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
-    if (token && userData) {
       try {
-        setUser(JSON.parse(userData));
+        const { data } = await costAPI.getProfile();
+        const normalized = normalizeUser(data);
+        if (normalized) {
+          localStorage.setItem('user', JSON.stringify(normalized));
+          setUser(normalized);
+        }
       } catch (error) {
-        console.error('Error parsing user data:', error);
+        console.error('Failed to hydrate user profile', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
       }
-    }
+    };
 
-    setLoading(false);
+    hydrateUser();
+  }, []);
+
+  useEffect(() => {
+    const handleStorageSync = () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setUser(null);
+        return;
+      }
+
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          setUser(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.error('Failed to parse cached user from storage', error);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageSync);
+    return () => window.removeEventListener('storage', handleStorageSync);
   }, []);
 
   const login = async (email, password) => {
     try {
       setLoading(true);
-      
-      // Call real API
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Login failed');
+      const { data } = await costAPI.login({ email, password });
+      localStorage.setItem('token', data.access_token);
+
+      let profilePayload = null;
+      try {
+        const profileResponse = await costAPI.getProfile();
+        profilePayload = profileResponse.data;
+      } catch (profileError) {
+        console.warn('Unable to fetch profile after login', profileError);
       }
 
-      const data = await response.json();
-      const userData = {
+      const normalized = normalizeUser(profilePayload || {
         id: data.user_id || data.id,
-        name: data.name || email.split('@')[0],
-        email: email,
-        role: data.role || 'member',
-        avatar: null
-      };
+        email,
+        role: data.role || 'member'
+      });
 
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      
+      if (normalized) {
+        localStorage.setItem('user', JSON.stringify(normalized));
+        setUser(normalized);
+      }
+
       toast.success('Login successful!');
-      return { success: true };
+      window.dispatchEvent(new Event('focus'));
+      return { success: true, role: normalized?.role || data.role };
     } catch (error) {
-      toast.error(error.message || 'Login failed');
-      return { success: false, error: error.message };
+      const message = error?.response?.data?.detail || error.message || 'Login failed';
+      toast.error(message);
+      return { success: false, error: message };
     } finally {
       setLoading(false);
     }
@@ -77,33 +120,37 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     setUser(null);
     toast.success('Logged out successfully');
+    window.dispatchEvent(new Event('focus'));
+  };
+
+  const refreshProfile = async () => {
+    try {
+      const { data } = await costAPI.getProfile();
+      const normalized = normalizeUser(data);
+      if (normalized) {
+        localStorage.setItem('user', JSON.stringify(normalized));
+        setUser(normalized);
+        window.dispatchEvent(new Event('focus'));
+      }
+      return data;
+    } catch (error) {
+      console.error('Failed to refresh profile', error);
+      return null;
+    }
   };
 
   const updateProfile = async (profileData) => {
     try {
       setLoading(true);
-      
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(profileData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
+      const { data } = await costAPI.updateProfile(profileData);
+      const normalized = normalizeUser(data);
+      if (normalized) {
+        localStorage.setItem('user', JSON.stringify(normalized));
+        setUser(normalized);
+        toast.success('Profile updated successfully');
+        window.dispatchEvent(new Event('focus'));
       }
-
-      const data = await response.json();
-      const updatedUser = { ...user, ...data };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      
-      toast.success('Profile updated successfully');
-      return { success: true };
+      return { success: true, data };
     } catch (error) {
       toast.error('Failed to update profile');
       return { success: false, error: error.message };
@@ -115,27 +162,28 @@ export const AuthProvider = ({ children }) => {
   const changePassword = async (currentPassword, newPassword) => {
     try {
       setLoading(true);
-      
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/user/password', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ currentPassword, newPassword })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to change password');
-      }
-      
+      await costAPI.changePassword({ currentPassword, newPassword });
       toast.success('Password changed successfully');
       return { success: true };
     } catch (error) {
       toast.error(error.message || 'Failed to change password');
       return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async ({ email, password, company }) => {
+    try {
+      setLoading(true);
+      await costAPI.signup({ email, password, company });
+      toast.success('Account created! Logging you in…');
+      setLoading(false);
+      return await login(email, password);
+    } catch (error) {
+      const message = error?.response?.data?.detail || error.message || 'Signup failed';
+      toast.error(message);
+      return { success: false, error: message };
     } finally {
       setLoading(false);
     }
@@ -147,7 +195,9 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateProfile,
-    changePassword
+    changePassword,
+    refreshProfile,
+    register
   };
 
   return (

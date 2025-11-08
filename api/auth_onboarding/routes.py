@@ -6,9 +6,15 @@ from sqlmodel import SQLModel, Session, create_engine, select
 from typing import Optional
 from datetime import datetime
 import os
+import json
 
-from .models import Tenant, User
+from .models import Tenant, User, AuditLog
 from .security import hash_password, verify_password, create_access_token, decode_token
+
+try:
+    from api.secure.aws.assume_role import assume_vendor_role
+except ImportError:
+    from secure.aws.assume_role import assume_vendor_role
 
 router = APIRouter(prefix="/api", tags=["auth", "onboarding"])
 
@@ -58,14 +64,14 @@ class LoginRequest(BaseModel):
 class ConnectAWSRequest(BaseModel):
     aws_role_arn: str
     external_id: str
-    cur_bucket: str
-    cur_prefix: str = "cur/"
-    athena_workgroup: str = "primary"
-    athena_db: str
-    athena_table: str
-    athena_results_bucket: str
-    athena_results_prefix: str = "athena-results/"
-    region: str = "us-east-1"
+    cur_bucket: Optional[str] = None
+    cur_prefix: Optional[str] = "cur/"
+    athena_workgroup: Optional[str] = "primary"
+    athena_db: Optional[str] = None
+    athena_table: Optional[str] = None
+    athena_results_bucket: Optional[str] = None
+    athena_results_prefix: Optional[str] = "athena-results/"
+    region: Optional[str] = "us-east-1"
 
 
 # --- Auth Endpoints ---
@@ -195,9 +201,6 @@ def connect_aws(
     """Connect tenant to AWS billing via cross-account role (with validation)"""
     from .current import get_current_ctx
     from .models import AuditLog
-    from api.secure.aws.assume_role import assume_vendor_role
-    import json
-    
     # Get current user context for audit log
     try:
         ctx = get_current_ctx(authorization, session)
@@ -206,14 +209,16 @@ def connect_aws(
         user_id = None
     
     # Validate AssumeRole before saving (fail fast)
+    target_region = request.region or tenant.region or "us-east-1"
+
     try:
         test_session = assume_vendor_role(
             request.aws_role_arn,
             request.external_id,
-            request.region
+            target_region
         )
         # Test the connection by calling GetCallerIdentity
-        sts = test_session.client("sts", region_name=request.region)
+        sts = test_session.client("sts", region_name=target_region)
         identity = sts.get_caller_identity()
         if not identity.get("Account"):
             raise Exception("Unable to get account identity")
@@ -233,8 +238,24 @@ def connect_aws(
         )
     
     # Update tenant with AWS connection details
-    for key, value in request.model_dump().items():
-        setattr(tenant, key, value)
+    # Update tenant with AWS connection details
+    tenant.aws_role_arn = request.aws_role_arn
+    tenant.external_id = request.external_id
+    tenant.region = target_region
+    if request.cur_bucket:
+        tenant.cur_bucket = request.cur_bucket
+    if request.cur_prefix:
+        tenant.cur_prefix = request.cur_prefix or "cur/"
+    if request.athena_workgroup:
+        tenant.athena_workgroup = request.athena_workgroup or "primary"
+    if request.athena_db:
+        tenant.athena_db = request.athena_db
+    if request.athena_table:
+        tenant.athena_table = request.athena_table
+    if request.athena_results_bucket:
+        tenant.athena_results_bucket = request.athena_results_bucket
+    if request.athena_results_prefix:
+        tenant.athena_results_prefix = request.athena_results_prefix or "athena-results/"
     
     session.add(tenant)
     
@@ -256,8 +277,28 @@ def connect_aws(
 
 
 @router.get("/tenants/me")
-def get_tenant_info(tenant: Tenant = Depends(get_current_tenant)):
-    """Get current tenant information"""
+def get_tenant_info(
+    authorization: str = Header(...),
+    session: Session = Depends(get_session)
+):
+    """Get current tenant information or global owner context"""
+    from .current import get_current_ctx
+
+    ctx = get_current_ctx(authorization, session)
+
+    # Global owner has no tenant_id; return role context instead of 401
+    if ctx.role == "global_owner" or ctx.tenant_id is None:
+        return {
+            "tenant": None,
+            "role": ctx.role,
+            "is_global_owner": True,
+            "hasConnection": False
+        }
+
+    tenant = session.get(Tenant, ctx.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
     return {
         "tenant": {
             "id": tenant.id,
@@ -266,7 +307,9 @@ def get_tenant_info(tenant: Tenant = Depends(get_current_tenant)):
             "plan": tenant.plan,
             "status": tenant.status,
             "hasConnection": bool(tenant.aws_role_arn and tenant.athena_db and tenant.athena_table)
-        }
+        },
+        "role": ctx.role,
+        "is_global_owner": False
     }
 
 
