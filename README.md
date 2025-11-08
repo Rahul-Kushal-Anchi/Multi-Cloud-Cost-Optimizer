@@ -1,401 +1,190 @@
 # AWS Cost Optimizer
 
-**A production-grade, event-driven platform for optimizing AWS costs with advanced analytics and automation**
+**A SaaS portal for onboarding AWS customers and delivering real-time cost intelligence backed by AWS CUR, Athena, and Cost Explorer.**
 
-> 💡 **Built with AI-Assisted Development:** This project demonstrates modern development practices using ChatGPT for design and Cursor for implementation.
-
-> 🎯 **AWS-Focused:** This project is exclusively focused on AWS cost optimization. We are not implementing multi-cloud support (GCP, Azure).
-
----
-
-## 🎯 Overview
-
-AWS Cost Optimizer is a comprehensive platform that:
-- **Ingests** AWS Cost and Usage Reports (CUR) automatically
-- **Processes** billing data through an event-driven ETL pipeline
-- **Analyzes** spending patterns and identifies cost anomalies
-- **Recommends** cost optimization opportunities (rightsizing, waste removal, commitments)
-- **Alerts** on anomalies and budget overruns via SNS
-- **Stores** data in a scalable data lake for historical analysis
-
-**Tech Stack:** Python, Terraform, AWS Lambda, EventBridge, SQS, DynamoDB, S3, SNS, FastAPI, Streamlit
+> 💡 **Built with AI-Assisted Development:** All major features were planned with ChatGPT and implemented in Cursor.
+>
+> ☁️ **AWS-Only:** The platform focuses on AWS financial operations (FinOps) today. Multi-cloud support is out of scope.
 
 ---
 
-## 🎨 Streamlit Dashboard
+## 🚀 What This Platform Delivers
 
-**AI-Powered Cost Optimization Interface**
+| Persona               | Highlights                                                                                 |
+|-----------------------|--------------------------------------------------------------------------------------------|
+| **Global Owner**      | Manage tenants, promote admins, connect CUR sources, monitor health across customers.      |
+| **Tenant Admin/User** | Self-service onboarding, connect AWS account via CloudFormation, explore live cost data.   |
+| **FinOps Analysts**   | Drill into dashboards, alerts, optimization recommendations, and savings opportunities.     |
 
-```bash
-./run_streamlit.sh
-# Then open: http://localhost:8501
+### Key Capabilities
+
+- 🔐 **Multi-tenant authentication** with role-based access (`global_owner`, `owner`, `admin`, `member`).
+- 🔄 **Onboarding workflow**: public signup, tenant activation, AWS connection with ExternalId.
+- 📊 **React dashboard** pulling live metrics from CUR via Athena and Cost Explorer.
+- 🧠 **Optimization insights**: dynamic alerts, savings opportunities, quick stats across the app.
+- ⚙️ **Persistent settings**: profile, notifications, alerts, security preferences, password changes.
+- ☁️ **Production deployment** on AWS ECS Fargate (API + SPA), fronted by an ALB, packaged via Docker & ECR.
+
+### Tech Stack Snapshot
+
+- **Frontend**: React, React Router, React Query, Context API.
+- **Backend**: FastAPI, SQLModel, PostgreSQL, Pydantic, boto3.
+- **AWS Data Plane**: CUR in S3, Athena (CTAS queries), Cost Explorer, IAM AssumeRole with ExternalId.
+- **Runtime & Deployment**: Docker, AWS ECS Fargate, AWS ECR, build-and-deploy automation script.
+
+---
+
+## 🧭 Repository Structure (high level)
+
+```
+multi-cloud-cost-optimizer/
+├── api/                        # FastAPI application
+│   ├── main.py                 # Entrypoint with REST endpoints
+│   ├── auth_onboarding/        # Auth, onboarding, admin routes
+│   ├── secure/aws/             # AWS integrations (Athena, STS assume role)
+│   └── tests/                  # API tests
+├── web-app/                    # React single-page application
+│   ├── src/
+│   │   ├── pages/              # Dashboard, Analytics, Optimizations, Alerts, Admin, Settings
+│   │   ├── components/         # Navbar, Sidebar, shared widgets
+│   │   └── contexts/           # Auth & metrics providers
+│   └── package.json
+├── cfn/connect-aws-billing.yml # Tenant-facing CloudFormation template for cross-account role
+├── build_and_deploy.sh         # Helper script to build & push Docker images + update ECS
+└── docs/                       # Additional documentation (CODE_REFERENCE.md, etc.)
 ```
 
-**Features:**
-- 📊 Real-time dashboard with metrics
-- 🤖 AI assistant powered by GPT-4o-mini
-- 💡 Smart recommendations ($4,593+/month savings)
-- 🔔 Cost alerts and anomaly detection
-- 📈 ML-based forecasting
-
-**Documentation:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
+> Legacy Streamlit/ETL references were removed; the project is now a React + FastAPI SaaS portal.
 
 ---
 
-## 📚 Documentation
-
-**Project Documentation:**
-
-### **[PROJECT_STATUS.md](PROJECT_STATUS.md)** 📊
-Complete project overview and current status:
-- Infrastructure deployment status
-- Streamlit dashboard features
-- AWS services integration
-- Current capabilities and metrics
-
-**Start here if:** You want to understand what's been built
-
-### **[EVENT_DRIVEN_ROADMAP.md](EVENT_DRIVEN_ROADMAP.md)** 🗺️
-Implementation roadmap and architecture details:
-- Event-driven architecture design
-- AWS services integration guide
-- Step-by-step implementation plan
-
-**Start here if:** You want to understand the architecture
-
-### **[docs/Architecture.md](docs/Architecture.md)** 🏗️
-System design and data flow:
-- High-level architecture
-- Component descriptions
-- Data flow diagrams
-- AWS-specific implementation details
-
-**Start here if:** You want to understand the system design
-
----
-
-## 🚀 Quick Start
+## 🛠️ Getting Started (Local Development)
 
 ### Prerequisites
 
-```bash
-# Required tools
-- Python 3.12+
-- AWS CLI 2.0+
-- Git
-- OpenAI API Key (for AI features)
-```
+- Node.js 18+
+- Python 3.11+
+- PostgreSQL 14+ (local or remote)
+- AWS account with CUR + Athena access for live data (optional for local dev)
 
-### Setup
+### 1. Clone & bootstrap
 
 ```bash
-# 1) Clone repository
 git clone https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer.git
 cd multi-cloud-cost-optimizer
-
-# 2) Create virtual environment
-python3 -m venv .venv && source .venv/bin/activate
-
-# 3) Install dependencies
-pip install -r streamlit_requirements.txt
-
-# 4) Set OpenAI API key (optional, for AI features)
-export OPENAI_API_KEY="your-openai-api-key-here"
 ```
 
-### Launch the Dashboard
+### 2. Backend setup (FastAPI)
 
 ```bash
-# Launch Streamlit dashboard
-./run_streamlit.sh
+cd api
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
-# Then open: http://localhost:8501
+# Configure environment variables (sample)
+export DATABASE_URL="postgresql+psycopg://user:pass@localhost:5432/cost_optimizer"
+export JWT_SECRET="change-me"
+export ALLOW_PUBLIC_SIGNUP="true"
+
+# Run the API locally
+uvicorn api.main:app --host 0.0.0.0 --port 9000 --reload
 ```
 
-### Deploy AWS Infrastructure (Optional)
+API docs available at `http://localhost:9000/api/docs`.
+
+### 3. Frontend setup (React)
 
 ```bash
-# Configure AWS credentials
-aws configure
-aws sts get-caller-identity
+cd web-app
+npm install
 
-# Deploy infrastructure
-cd infra/aws
-terraform init
-terraform plan
-terraform apply
+# Point the SPA at the backend
+export REACT_APP_API_URL="http://localhost:9000/api"
+
+npm run dev   # Vite dev server (default port 5173)
 ```
+
+Visit `http://localhost:5173` – the login page supports both sign-in and new-account setup.
 
 ---
 
-## 📁 Project Structure
+## 🔄 Tenant Onboarding & AWS Connection
 
-```
-aws-cost-optimizer/
-│
-├── docs/                           # Documentation
-│   └── Architecture.md            # System architecture
-│
-├── infra/                          # Infrastructure as Code
-│   └── aws/
-│       ├── main.tf                # Main Terraform configuration
-│       ├── variables.tf           # Variables
-│       ├── outputs.tf             # Outputs
-│       └── etl_aws_cur_parser.zip # Lambda deployment package
-│
-├── etl/                            # ETL pipelines
-│   └── aws_lambda/
-│       ├── etl_aws_cur_parser/    # CUR file processor
-│       │   ├── lambda_function.py # Main ETL handler
-│       │   └── requirements.txt   # Lambda dependencies
-│       └── signal_router/         # Real-time anomaly router
-│           ├── lambda_function.py
-│           └── requirements.txt
-│
-├── 📁 samples/                    # Sample data
-│   └── aws_cur_sample.csv        # Sample AWS CUR
-│
-└── 📁 tests/                      # Tests
-    └── test_api.py               # API tests
-```
+1. **Global owner login**: promote a user via the admin script or direct DB update (`role=global_owner`).
+2. **Create tenant**: global owner uses the Admin panel or `/api/admin/tenants` endpoints.
+3. **Public signup (optional)**: enable via `ALLOW_PUBLIC_SIGNUP=true`, new tenants land with `trialing` status.
+4. **Connect AWS account**:
+   - Launch the CloudFormation stack `cfn/connect-aws-billing.yml` in the tenant’s AWS account.
+   - Capture `VendorRoleArn` and `ExternalId` from the stack outputs.
+   - In the portal, go to **Connect AWS** and supply:
+     - `AWS Role ARN`
+     - `External ID`
+     - CUR bucket & prefix
+     - Athena database, table, workgroup, results bucket/prefix
+5. **Verify data flow**:
+   - After the first CUR parquet delivery, dashboards populate automatically.
+   - The sidebar quick stats, main dashboard cards, analytics charts, optimizations, and alerts all read from live CUR.
+
+> The backend guards against missing CUR data: if only manifest/DDL files exist, responses fall back to zeros instead of throwing errors.
 
 ---
 
-## 🎯 Current Status
+## ☁️ Production Deployment (AWS ECS)
 
-**✅ COMPLETED FEATURES:**
+The repo ships with `build_and_deploy.sh`, which:
 
-### AWS Infrastructure (100% Complete)
-- ✅ Event-driven architecture with EventBridge, SQS, Lambda
-- ✅ DynamoDB for cost data storage
-- ✅ S3 data lake with partitioning
-- ✅ SNS notifications system
-- ✅ Complete Terraform infrastructure
-
-### Streamlit Dashboard (100% Complete)
-- ✅ Interactive dashboard with 5 pages
-- ✅ AI assistant powered by GPT-4o-mini
-- ✅ Cost optimization recommendations
-- ✅ ML forecasting and analytics
-- ✅ Real-time metrics and visualizations
-
-**🎯 Ready for Production Use!**
-
----
-
-## 🏗️ Architecture
-
-**Event-Driven Architecture Flow:**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   AWS Cost Data Source                       │
-│              (Cost and Usage Reports - CUR)                  │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-                ┌─────────────────────┐
-                │   S3 Cost Lake      │
-                │  (Raw CUR Files)    │
-                └──────────┬──────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │   EventBridge Bus   │
-                │  (Event Router)     │
-                └──────────┬──────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │   SQS Queue         │
-                │  + Dead Letter Q    │
-                └──────────┬──────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │   Lambda Function   │
-                │  ETL CUR Parser     │
-                └──────────┬──────────┘
-                           │
-           ┌───────────────┴───────────────┐
-           │                               │
-           ▼                               ▼
-┌──────────────────┐          ┌────────────────────┐
-│  DynamoDB Table  │          │  S3 Data Lake      │
-│  (Daily Totals)  │          │  (Curated Data)    │
-└──────────────────┘          └────────────────────┘
-           │
-           ▼
-┌──────────────────┐
-│ Optimization     │
-│ Engines          │
-│ • Rightsizing    │
-│ • Waste          │
-│ • Anomaly        │
-│ • Commitments    │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│   FastAPI        │
-│   Backend        │
-└─────────┬────────┘
-          │
-    ┏─────┻─────┓
-    ▼           ▼
-┌─────────┐  ┌────────┐
-│ Grafana │  │  SNS   │
-│Dashboard│  │ Alerts │
-└─────────┘  └────────┘
-```
-
-**See [Architecture.md](docs/Architecture.md) for detailed diagrams**
-
----
-
-## 🔧 Development
-
-### Launch Dashboard
+1. Logs in to ECR.
+2. Builds and tags the **web** and **api** Docker images.
+3. Pushes to `899156640791.dkr.ecr.us-east-1.amazonaws.com`.
+4. Updates the ECS services (`aws-cost-optimizer-dev-web` and `aws-cost-optimizer-dev-api`) with `--force-new-deployment`.
 
 ```bash
-# Launch Streamlit dashboard
-./run_streamlit.sh
-
-# Open browser to: http://localhost:8501
+./build_and_deploy.sh
 ```
 
-### Deploy AWS Infrastructure
+### Runtime expectations
 
-```bash
-# Configure AWS credentials
-aws configure
-aws sts get-caller-identity
-
-# Deploy infrastructure
-cd infra/aws
-terraform init
-terraform plan
-terraform apply
-```
-
-### Test AWS Pipeline
-
-```bash
-# Upload sample CUR file
-aws s3 cp samples/aws_cur_sample.csv s3://costlake-dev-450dc612/test.csv
-
-# Check Lambda logs
-aws logs tail /aws/lambda/etl-aws-cur-parser-dev --follow
-
-# Verify data in DynamoDB
-aws dynamodb scan --table-name cost_daily_dev
-```
+- **Web** container serves the React SPA via `serve`.
+- **API** container runs `uvicorn api.main:app` on port 8000.
+- ECS task definitions should include:
+  - `DATABASE_URL`, `JWT_SECRET`, `ALLOW_PUBLIC_SIGNUP`
+  - `AWS_REGION`, and any Cost Explorer/Athena specific overrides if necessary.
+- Health checks hit `/healthz` on the API container and `/` on the web container.
 
 ---
 
-## 📊 Features
+## 🧪 Testing & Tooling
 
-### ✅ Current Features
-- **AWS Infrastructure**: Event-driven architecture with EventBridge, SQS, Lambda, DynamoDB, S3, SNS
-- **Streamlit Dashboard**: 5 interactive pages with AI integration
-- **AI Assistant**: GPT-4o-mini powered cost optimization advice
-- **Cost Analysis**: Real-time metrics, trends, and forecasting
-- **Recommendations**: $4,593+/month potential savings identified
-- **Data Processing**: CUR file ingestion and aggregation
-- **Monitoring**: CloudWatch logs and SNS notifications
-- **Security**: Environment variable configuration for API keys
-
-### 🎯 Key Capabilities
-- **Cost Optimization**: Identifies 23% average savings opportunities
-- **AI-Powered Insights**: Natural language cost analysis and recommendations
-- **Real-Time Monitoring**: Live cost tracking and anomaly detection
-- **ML Forecasting**: Predictive cost modeling for budget planning
-- **Production-Ready**: Scalable architecture with error handling
+- **API tests**: `pytest api/tests` (includes auth & health checks).
+- **Frontend linting**: `npm run lint` inside `web-app`.
+- **Formatting**: Prettier for React, black/isort for FastAPI.
+- **Docs**: `docs/CODE_REFERENCE.md` summarises endpoints, contexts, and hooks.
 
 ---
 
-## 🎯 Use Cases
+## 📚 Additional Documentation
 
-### **FinOps Teams**
-- Monitor and optimize AWS cloud spend
-- Generate actionable cost optimization recommendations
-- Track savings over time with detailed analytics
+- [docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md) – living reference for API + frontend modules.
+- [DEPLOYMENT_INSTRUCTIONS.md](DEPLOYMENT_INSTRUCTIONS.md) – operational notes for ECS/ALB setup.
+- [cfn/connect-aws-billing.yml](cfn/connect-aws-billing.yml) – tenant CloudFormation template.
 
-### **Engineering Teams**
-- Understand cost impact of infrastructure changes
-- Get alerted on cost anomalies and spikes
-- Right-size resources with AI-powered recommendations
-
-### **Executives & Management**
-- Unified view of AWS costs with trend analysis
-- Cost forecasting for budget planning
-- ROI tracking for optimization initiatives
-
-### **Learning & Portfolio**
-- Capstone project demonstrating cloud expertise
-- Portfolio piece showcasing AI integration
-- Interview showcase for technical discussions
+Legacy docs (e.g., `PROJECT_STATUS.md`, `EVENT_DRIVEN_ROADMAP.md`) describe the original Streamlit/Lambda architecture and are kept for historical context only.
 
 ---
 
-## 📝 License
+## 📈 Live Environments
 
-MIT License - See [LICENSE](LICENSE) file
+- **Portal**: `http://aws-cost-optimizer-dev-alb-2097253605.us-east-1.elb.amazonaws.com/login`
+- **API health**: `http://aws-cost-optimizer-dev-alb-2097253605.us-east-1.elb.amazonaws.com/api/healthz`
 
----
-
-## 🙏 Acknowledgments
-
-**Technologies:**
-- AWS (Lambda, S3, DynamoDB, EventBridge, SQS, SNS)
-- Terraform (Infrastructure as Code)
-- Streamlit (Interactive Dashboard)
-- OpenAI (GPT-4o-mini AI Integration)
-
-**AI-Assisted Development:**
-- ChatGPT (OpenAI) - For design and learning
-- Cursor - For AI-assisted coding
+*(Internal use – ALB is currently public for evaluation. Lock down via WAF or authentication gateway before production launch.)*
 
 ---
 
-## 🚀 CI/CD Pipeline
+## 🙌 Credits & License
 
-**Automated Deployment & Monitoring**
+- Crafted with help from **ChatGPT** + **Cursor**.
+- © Rahul Kushal Anchi – released under the [MIT License](LICENSE).
 
-[![Deploy](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/deploy.yml/badge.svg)](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/deploy.yml)
-[![Security](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/security.yml/badge.svg)](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/security.yml)
-[![Infrastructure](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/infrastructure.yml/badge.svg)](https://github.com/Rahul-Kushal-Anchi/multi-cloud-cost-optimizer/actions/workflows/infrastructure.yml)
-
-### **Production Deployment Status**
-- ✅ **Web App**: http://aws-cost-optimizer-dev-alb-2097253605.us-east-1.elb.amazonaws.com:80
-- ✅ **API Service**: http://aws-cost-optimizer-dev-alb-2097253605.us-east-1.elb.amazonaws.com:8000/healthz
-- ✅ **ECS Services**: Both API and Web services running on Fargate
-- ✅ **Monitoring**: CloudWatch dashboards and alarms configured
-
-### **CI/CD Features**
-- 🔄 **Automated Testing**: Python and Node.js test suites
-- 🐳 **Docker Builds**: Multi-platform AMD64 images
-- 🚀 **ECS Deployment**: Automatic service updates
-- 🔒 **Security Scanning**: Bandit, Safety, Trivy, Semgrep
-- 📊 **Infrastructure Management**: Terraform plan/apply/destroy
-- 📈 **Monitoring Setup**: CloudWatch dashboards and X-Ray tracing
-
-**Documentation:** [CI_CD_SETUP_GUIDE.md](CI_CD_SETUP_GUIDE.md)
-
----
-
-## 🚀 Ready to Get Started?
-
-**Launch your AWS Cost Optimizer dashboard:**
-
-```bash
-./run_streamlit.sh
-# Open: http://localhost:8501
-```
-
-**Try the AI assistant:**
-- "How can I reduce my EC2 costs?"
-- "What are my top 3 cost savings opportunities?"
-- "Are there any cost anomalies I should investigate?"
-
-**Happy cost optimizing! 💰✨**
+Enjoy simplifying your AWS cost visibility! 💸🚀
