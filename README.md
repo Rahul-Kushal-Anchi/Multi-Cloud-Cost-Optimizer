@@ -184,7 +184,6 @@ Legacy docs (e.g., `PROJECT_STATUS.md`, `EVENT_DRIVEN_ROADMAP.md`) describe the 
 
 ## 🙌 Credits & License
 
-- Crafted with help from **ChatGPT** + **Cursor**.
 - © Rahul Kushal Anchi – released under the [MIT License](LICENSE).
 
 Enjoy simplifying your AWS cost visibility! 💸🚀
