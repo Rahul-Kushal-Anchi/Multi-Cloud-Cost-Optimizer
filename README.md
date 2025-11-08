@@ -2,8 +2,6 @@
 
 **A SaaS portal for onboarding AWS customers and delivering real-time cost intelligence backed by AWS CUR, Athena, and Cost Explorer.**
 
-> 💡 **Built with AI-Assisted Development:** All major features were planned with ChatGPT and implemented in Cursor.
->
 > ☁️ **AWS-Only:** The platform focuses on AWS financial operations (FinOps) today. Multi-cloud support is out of scope.
 
 ---
