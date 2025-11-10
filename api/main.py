@@ -5,7 +5,8 @@ from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from statistics import mean
 from uuid import uuid4
-from botocore.exceptions import ClientError
+import logging
+import sys
 
 # Secure deps for real CUR
 import sys
@@ -68,6 +69,9 @@ except Exception as e:
 app = FastAPI(title="Cost Optimizer API", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
+
+logger = logging.getLogger("api.cost_optimizer")
+logger.setLevel(logging.INFO)
 
 # Include auth and onboarding routes
 try:
@@ -223,77 +227,23 @@ def fetch_tenant_cost_data(tenant: Tenant, days: int) -> Dict[str, Any]:
     if not CUR_AVAILABLE:
         raise HTTPException(status_code=503, detail="CUR integration is not available on this deployment.")
 
-    try:
-        session = assume_vendor_role(
-            tenant.aws_role_arn,
-            tenant.external_id,
-            tenant.region or "us-east-1"
-        )
-    except ClientError as exc:
-        code = exc.response.get("Error", {}).get("Code", "AssumeRoleError")
-        detail = exc.response.get("Error", {}).get("Message", str(exc))
-        raise HTTPException(
-            status_code=502,
-            detail=f"Failed to assume tenant AWS role ({code}): {detail}"
-        ) from exc
+    session = assume_vendor_role(
+        tenant.aws_role_arn,
+        tenant.external_id,
+        tenant.region or "us-east-1"
+    )
 
     workgroup = tenant.athena_workgroup or "primary"
     database = tenant.athena_db
     table = f"{tenant.athena_db}.{tenant.athena_table}"
 
-    bucket = tenant.cur_bucket
-    prefix = tenant.cur_prefix or ""
-    if not bucket:
-        raise HTTPException(status_code=400, detail="Tenant CUR bucket is not configured.")
-    normalized_prefix = prefix.lstrip("/")
-    if normalized_prefix and not normalized_prefix.endswith("/"):
-        normalized_prefix += "/"
-
-    s3_client = session.client("s3")
-    found_parquet = False
-    paginator = s3_client.get_paginator("list_objects_v2")
-    try:
-        for page in paginator.paginate(
-            Bucket=bucket,
-            Prefix=normalized_prefix,
-            PaginationConfig={"PageSize": 100}
-        ):
-            for obj in page.get("Contents", []):
-                if obj["Key"].lower().endswith(".parquet"):
-                    found_parquet = True
-                    break
-            if found_parquet:
-                break
-    except ClientError as exc:
-        detail = exc.response.get("Error", {}).get("Message", str(exc))
-        raise HTTPException(
-            status_code=502,
-            detail=f"Unable to list CUR objects in s3://{bucket}/{normalized_prefix}: {detail}"
-        ) from exc
-
-    if not found_parquet:
-        return {
-            "services": [],
-            "daily": [],
-            "total_cost": 0.0,
-            "avg_daily": 0.0,
-        }
-
-    def execute_athena(query: str) -> List[Dict[str, Any]]:
-        try:
-            return run_athena_query(
-                session,
-                workgroup=workgroup,
-                database=database,
-                query=query
-            )
-        except RuntimeError as exc:
-            message = str(exc)
-            if "HIVE_BAD_DATA" in message or "Malformed Parquet" in message:
-                return []
-            raise
-
-    service_rows = execute_athena(cur_cost_query_sql(table, days))
+    service_rows = run_athena_query(
+        session,
+        workgroup=workgroup,
+        database=database,
+        query=cur_cost_query_sql(table, days)
+    )
+    logger.info("cur_fetch tenant=%s days=%s services_raw_sample=%s", tenant.id, days, service_rows[:3])
 
     services: List[Dict[str, Any]] = []
     total_service_cost = 0.0
@@ -319,16 +269,22 @@ def fetch_tenant_cost_data(tenant: Tenant, days: int) -> Dict[str, Any]:
 
     daily_query = f"""
         SELECT 
-          date_trunc('day', from_iso8601_timestamp(lineitem_usagestartdate)) AS day,
-          SUM(COALESCE(CAST(lineitem_unblendedcost AS double), 0)) AS cost
+          date_trunc('day', line_item_usage_start_date) AS day,
+          SUM(COALESCE(CAST(line_item_unblended_cost AS double), 0)) AS cost
         FROM {table}
-        WHERE from_iso8601_timestamp(lineitem_usagestartdate) >= date_add('day', -{days}, current_timestamp)
-          AND regexp_like("$path", '.*\\\\.parquet$')
+        WHERE line_item_usage_start_date >= date_add('day', -{days}, current_timestamp)
+          AND "$path" LIKE '%.parquet'
         GROUP BY 1
         ORDER BY 1 ASC
     """
 
-    daily_rows = execute_athena(daily_query)
+    daily_rows = run_athena_query(
+        session,
+        workgroup=workgroup,
+        database=database,
+        query=daily_query
+    )
+    logger.info("cur_fetch tenant=%s days=%s daily_raw_sample=%s", tenant.id, days, daily_rows[:3])
 
     daily_data: List[Dict[str, Any]] = []
     for row in daily_rows:

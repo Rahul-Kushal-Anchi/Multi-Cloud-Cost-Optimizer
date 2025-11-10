@@ -32,9 +32,7 @@ def run_athena_query(session, workgroup: str, database: str, query: str) -> List
                  .get("Status", {})
                  .get("StateChangeReason", "")
             )
-            raise RuntimeError(
-                f"Athena query {qid} {state}: {reason or 'no reason returned'}"
-            )
+            raise RuntimeError(f"Athena query {qid} {state}: {reason or 'no reason returned'}")
         if time.time() - t0 > ATHENA_TIMEOUT:
             raise TimeoutError("Athena query timed out")
         time.sleep(1.0)
@@ -55,11 +53,11 @@ def run_athena_query(session, workgroup: str, database: str, query: str) -> List
 def cur_cost_query_sql(table: str, days: int = 7) -> str:
     return f"""
     SELECT
-      product_productname AS service,
-      SUM(CAST(lineitem_unblendedcost AS double)) AS cost
+      product_product_name AS service,
+      SUM(CAST(line_item_unblended_cost AS double)) AS cost
     FROM {table}
-    WHERE from_iso8601_timestamp(lineitem_usagestartdate) >= date_add('day', -{days}, current_timestamp)
-      AND regexp_like("$path", '.*\\\\.parquet$')
+    WHERE line_item_usage_start_date >= date_add('day', -{days}, current_timestamp)
+      AND "$path" LIKE '%.parquet'
     GROUP BY 1
     ORDER BY cost DESC
     LIMIT 50
@@ -88,11 +86,11 @@ def get_costs(days: int = 7, tenant: Tenant = Depends(get_current_tenant)):
         # Build Athena query for daily costs
         query = f"""
         SELECT 
-          date_trunc('day', from_iso8601_timestamp(lineitem_usagestartdate)) AS day,
-          SUM(COALESCE(CAST(lineitem_unblendedcost AS double), 0)) AS cost
+          date_trunc('day', line_item_usage_start_date) AS day,
+          SUM(COALESCE(CAST(line_item_unblended_cost AS double), 0)) AS cost
         FROM {tenant.athena_db}.{tenant.athena_table}
-        WHERE from_iso8601_timestamp(lineitem_usagestartdate) >= date_add('day', -{days}, current_timestamp)
-          AND regexp_like("$path", '.*\\\\.parquet$')
+        WHERE line_item_usage_start_date >= date_add('day', -{days}, current_timestamp)
+          AND "$path" LIKE '%.parquet'
         GROUP BY 1
         ORDER BY 1 ASC
         """
