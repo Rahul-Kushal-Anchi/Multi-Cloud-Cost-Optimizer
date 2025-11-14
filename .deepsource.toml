@@ -1,0 +1,115 @@
+version = 1
+
+[[analyzers]]
+name = "python"
+enabled = true
+
+  [analyzers.meta]
+  environment = ["production"]
+  python_version = ["3.11"]
+
+  [[analyzers.meta.packages]]
+  name = "api"
+  path = "api"
+
+[[analyzers]]
+name = "javascript"
+enabled = true
+
+  [analyzers.meta]
+  environment = ["browser", "nodejs"]
+
+  [[analyzers.meta.packages]]
+  name = "web-app"
+  path = "web-app"
+
+[[analyzers]]
+name = "dockerfile"
+enabled = true
+
+[[analyzers]]
+name = "terraform"
+enabled = true
+
+  [analyzers.meta]
+  root_dir = "infra"
+
+[python]
+# Python-specific configurations
+python_version = "3.11"
+
+  [python.pytest]
+  enabled = true
+  config_file_path = "pytest.ini"
+  test_patterns = [
+    "tests/**/*test*.py",
+    "api/tests/**/*test*.py"
+  ]
+
+  [python.mypy]
+  enabled = false  # Enable if you want type checking
+
+  [python.bandit]
+  enabled = true
+  config_file_path = "pyproject.toml"
+
+  [python.safety]
+  enabled = true
+
+[javascript]
+# JavaScript/React-specific configurations
+version = "18"
+
+  [javascript.eslint]
+  enabled = true
+  config_file_path = "web-app/.eslintrc.json"
+  use_standard_config = false
+
+  [javascript.prettier]
+  enabled = true
+  config_file_path = "web-app/.prettierrc"
+
+# File exclusions
+[exclude]
+paths = [
+  "**/node_modules/**",
+  "**/venv/**",
+  "**/.venv/**",
+  "**/__pycache__/**",
+  "**/.pytest_cache/**",
+  "**/build/**",
+  "**/dist/**",
+  "**/.next/**",
+  "**/coverage/**",
+  "**/*.min.js",
+  "**/*.bundle.js",
+  "**/migrations/**"
+]
+
+# Test configurations
+[test_patterns]
+python = [
+  "tests/**/*test*.py",
+  "**/*_test.py",
+  "**/test_*.py"
+]
+
+javascript = [
+  "**/*.test.js",
+  "**/*.test.jsx",
+  "**/*.spec.js",
+  "**/*.spec.jsx",
+  "**/__tests__/**"
+]
+
+# Coverage configurations
+[coverage]
+exclude_paths = [
+  "**/tests/**",
+  "**/test/**",
+  "**/node_modules/**",
+  "**/venv/**",
+  "**/build/**",
+  "**/dist/**"
+]
+
