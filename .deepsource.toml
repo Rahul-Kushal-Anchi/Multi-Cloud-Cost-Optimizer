@@ -38,11 +38,6 @@ enabled = true
 name = "javascript"
 enabled = true
 
-# Dockerfile analyzer
-[[analyzers]]
-name = "dockerfile"
-enabled = true
-
 # Terraform analyzer
 [[analyzers]]
 name = "terraform"
