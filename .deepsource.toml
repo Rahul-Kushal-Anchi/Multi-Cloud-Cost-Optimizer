@@ -1,72 +1,7 @@
 version = 1
 
-[[analyzers]]
-name = "python"
-enabled = true
-
-  [analyzers.meta]
-  environment = ["production"]
-  python_version = ["3.11"]
-
-  [[analyzers.meta.packages]]
-  name = "api"
-  path = "api"
-
-[[analyzers]]
-name = "javascript"
-enabled = true
-
-  [analyzers.meta]
-  environment = ["browser", "nodejs"]
-
-  [[analyzers.meta.packages]]
-  name = "web-app"
-  path = "web-app"
-
-[[analyzers]]
-name = "dockerfile"
-enabled = true
-
-[[analyzers]]
-name = "terraform"
-enabled = true
-
-  [analyzers.meta]
-  root_dir = "infra"
-
-[python]
-# Python-specific configurations
-python_version = "3.11"
-
-  [python.pytest]
-  enabled = true
-  test_patterns = [
-    "tests/**/*test*.py",
-    "**/*_test.py",
-    "**/test_*.py"
-  ]
-
-  [python.mypy]
-  enabled = false
-
-  [python.bandit]
-  enabled = true
-
-  [python.safety]
-  enabled = true
-
-[javascript]
-# JavaScript/React-specific configurations
-version = "18"
-
-  [javascript.eslint]
-  enabled = true
-  config_file_path = "web-app/.eslintrc.json"
-  use_standard_config = false
-
-# File exclusions
-[exclude]
-paths = [
+# Patterns to exclude from analysis
+exclude_patterns = [
   "**/node_modules/**",
   "**/venv/**",
   "**/.venv/**",
@@ -81,3 +16,46 @@ paths = [
   "**/migrations/**"
 ]
 
+# Patterns to identify test files
+test_patterns = [
+  "tests/**/*test*.py",
+  "**/*_test.py",
+  "**/test_*.py",
+  "**/*.test.js",
+  "**/*.test.jsx",
+  "**/*.spec.js",
+  "**/*.spec.jsx",
+  "**/__tests__/**"
+]
+
+# Python analyzer
+[[analyzers]]
+name = "python"
+enabled = true
+dependency_file_paths = [
+  "api/requirements.txt"
+]
+
+  [analyzers.meta]
+  python_version = ["3.11"]
+
+# JavaScript analyzer
+[[analyzers]]
+name = "javascript"
+enabled = true
+dependency_file_paths = [
+  "web-app/package.json"
+]
+
+  [analyzers.meta]
+  environment = ["browser", "nodejs"]
+
+# Dockerfile analyzer
+[[analyzers]]
+name = "dockerfile"
+enabled = true
+
+# Terraform analyzer
+[[analyzers]]
+name = "terraform"
+enabled = true
