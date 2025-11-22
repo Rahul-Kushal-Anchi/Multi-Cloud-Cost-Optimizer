@@ -29,7 +29,7 @@ reviews:
   # Enable automatic reviews on pull requests
   enabled: true
   # Review all files, not just changed ones
-  review_all_files: false
+  review_all_files: true
   # Paths to exclude from review
   exclude_paths:
     - "**/node_modules/**"
@@ -70,10 +70,19 @@ focus_paths:
   - "infra/**"
   - "etl/**"
 
-# Ignore specific patterns
+# Ignore specific patterns (only exclude non-code files)
 ignore_patterns:
-  - "**/*.md"
-  - "**/*.txt"
-  - "**/.gitignore"
-  - "**/.github/**"
+  - "**/node_modules/**"
+  - "**/venv/**"
+  - "**/.venv/**"
+  - "**/__pycache__/**"
+  - "**/.pytest_cache/**"
+  - "**/build/**"
+  - "**/dist/**"
+  - "**/.next/**"
+  - "**/coverage/**"
+  - "**/*.min.js"
+  - "**/*.bundle.js"
+  - "**/package-lock.json"
+  - "**/yarn.lock"
 
