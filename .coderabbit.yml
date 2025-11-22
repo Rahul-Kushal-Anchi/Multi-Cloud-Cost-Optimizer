@@ -1,0 +1,79 @@
+# CodeRabbit Configuration
+# This file configures how CodeRabbit reviews your code
+
+# Language-specific settings
+language:
+  python:
+    # Enable Python-specific reviews
+    enabled: true
+    # Review patterns
+    review_patterns:
+      - "**/*.py"
+  javascript:
+    # Enable JavaScript/TypeScript reviews
+    enabled: true
+    review_patterns:
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.ts"
+      - "**/*.tsx"
+  terraform:
+    # Enable Terraform reviews
+    enabled: true
+    review_patterns:
+      - "**/*.tf"
+      - "**/*.tfvars"
+
+# Review settings
+reviews:
+  # Enable automatic reviews on pull requests
+  enabled: true
+  # Review all files, not just changed ones
+  review_all_files: false
+  # Paths to exclude from review
+  exclude_paths:
+    - "**/node_modules/**"
+    - "**/venv/**"
+    - "**/.venv/**"
+    - "**/__pycache__/**"
+    - "**/.pytest_cache/**"
+    - "**/build/**"
+    - "**/dist/**"
+    - "**/.next/**"
+    - "**/coverage/**"
+    - "**/*.min.js"
+    - "**/*.bundle.js"
+    - "**/migrations/**"
+    - "**/package-lock.json"
+    - "**/yarn.lock"
+
+# Suggestions settings
+suggestions:
+  # Enable code suggestions
+  enabled: true
+  # Auto-apply suggestions (use with caution)
+  auto_apply: false
+  # Minimum confidence level for suggestions (0-1)
+  min_confidence: 0.7
+
+# Chat settings (for PR comments)
+chat:
+  # Enable chat functionality
+  enabled: true
+  # Respond to PR comments
+  respond_to_comments: true
+
+# Paths to focus reviews on
+focus_paths:
+  - "api/**"
+  - "web-app/src/**"
+  - "infra/**"
+  - "etl/**"
+
+# Ignore specific patterns
+ignore_patterns:
+  - "**/*.md"
+  - "**/*.txt"
+  - "**/.gitignore"
+  - "**/.github/**"
+
