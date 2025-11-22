@@ -7,10 +7,9 @@ from statistics import mean
 from uuid import uuid4
 import logging
 import sys
+import os
 
 # Secure deps for real CUR
-import sys
-import os
 # Add parent directory to path to allow imports
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
