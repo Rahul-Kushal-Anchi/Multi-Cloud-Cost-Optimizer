@@ -11,7 +11,8 @@ import {
   TrendingUp,
   Activity,
   Shield,
-  Cloud
+  Cloud,
+  AlertTriangle
 } from 'lucide-react';
 import { useDashboardMetrics } from '../contexts/DashboardMetricsContext';
 
