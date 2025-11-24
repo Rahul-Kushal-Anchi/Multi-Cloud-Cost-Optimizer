@@ -261,39 +261,44 @@ Response: {
 
 ## 🎨 **DEMO PREPARATION**
 
-### **Demo Data Setup:**
-1. **Create realistic demo tenant**
-   - AWS account with sample costs
-   - Multiple EC2 instances with different usage patterns
-   - Cost anomalies (spikes, drops)
+### **Production Data Setup:**
+1. **Use Real AWS Account Data**
+   - Connect to actual AWS account with real costs
+   - Collect real CloudWatch metrics from running instances
+   - Analyze actual cost patterns and anomalies
+   - NO MOCK DATA - everything must be real
 
-2. **Mock ML Recommendations:**
-   - Pre-calculate right-sizing recommendations
-   - Anomaly examples
-   - Forecast data
+2. **Real ML Model Training:**
+   - Train models on actual historical cost data
+   - Use real CloudWatch metrics for right-sizing
+   - Generate genuine recommendations based on actual usage
+   - NO PRE-CALCULATED RECOMMENDATIONS - all must be ML-generated
 
-3. **Demo Script:**
-   - Step-by-step walkthrough
-   - Key talking points
-   - Q&A preparation
+3. **Presentation Script:**
+   - Step-by-step walkthrough using REAL data
+   - Show actual ML model outputs
+   - Demonstrate real-time anomaly detection
+   - Q&A preparation with real technical details
 
-### **Demo Scenarios:**
+### **Real Production Scenarios:**
 
-**Scenario 1: Anomaly Detection**
-- Show cost spike detection
-- Explain root cause
-- Show alert notification
+**Scenario 1: Real Anomaly Detection**
+- Connect to actual AWS account
+- Show ML model detecting REAL cost anomalies
+- Explain actual root cause from CloudWatch/Athena
+- Show real-time alert notification
 
-**Scenario 2: Right-Sizing**
-- Show instance with low utilization
-- Show specific recommendation
-- Show savings calculation
-- Show risk assessment
+**Scenario 2: Real Right-Sizing Analysis**
+- Query actual EC2 instances from AWS
+- Collect real CloudWatch metrics (CPU, memory)
+- Show ML model generating REAL recommendations
+- Show actual savings calculations based on real pricing
+- Show real risk assessment from actual usage patterns
 
-**Scenario 3: Cost Forecasting**
-- Show 6-month forecast
-- Explain confidence intervals
-- Show trend analysis
+**Scenario 3: Real Cost Forecasting**
+- Train model on actual historical cost data (from CUR)
+- Show 6-month forecast with real confidence intervals
+- Explain actual trend analysis from real data
 
 ---
 
@@ -353,11 +358,12 @@ Response: {
 
 ## 🎯 **SUCCESS CRITERIA**
 
-### **Must Have (Minimum Viable):**
-- ✅ Anomaly detection working
-- ✅ Right-sizing recommendations working
-- ✅ Enhanced dashboard
-- ✅ Presentation slides
+### **Must Have (Minimum Viable - ALL REAL):**
+- ✅ Real ML anomaly detection (trained on actual data)
+- ✅ Real right-sizing recommendations (from actual CloudWatch metrics)
+- ✅ Enhanced dashboard showing real data
+- ✅ Presentation slides with real examples
+- ✅ NO MOCK DATA - everything production-ready
 
 ### **Should Have (Impressive):**
 - ✅ Cost forecasting
@@ -376,8 +382,9 @@ Response: {
 
 ### **If Behind Schedule:**
 1. **Focus on Core Features:** Anomaly detection + Right-sizing only
-2. **Use Mock Data:** Pre-calculate recommendations for demo
-3. **Simplify UI:** Focus on functionality over polish
+2. **Use Real Data Only:** Never use mock data - connect to real AWS account
+3. **Simplify UI:** Focus on functionality over polish, but keep it real
+4. **Train Smaller Models:** Use simpler ML models that train faster, but still real
 
 ### **If Ahead of Schedule:**
 1. **Add Forecasting:** Time series model

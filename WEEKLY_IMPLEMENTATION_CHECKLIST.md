@@ -26,24 +26,28 @@
 - [ ] Create `recommendations` table (right-sizing recommendations)
 - [ ] Create migrations
 
-#### **CloudWatch Metrics Collection**
+#### **CloudWatch Metrics Collection (REAL DATA ONLY)**
 - [ ] Create `api/secure/aws/cloudwatch.py`
-- [ ] Implement EC2 instance metrics collection (CPU, memory)
-- [ ] Implement cost metrics collection
-- [ ] Set up scheduled job for metrics collection
+- [ ] Implement EC2 instance metrics collection from **REAL AWS account** (CPU, memory)
+- [ ] Query **REAL CloudWatch metrics** using boto3
+- [ ] Implement cost metrics collection from **REAL CUR data**
+- [ ] Set up scheduled job for **REAL metrics collection**
+- [ ] **NO MOCK DATA** - all metrics must be real
 
-**Deliverable:** ML infrastructure ready, metrics collection working
+**Deliverable:** ML infrastructure ready, **REAL** metrics collection working
 
 ---
 
 ### **Day 3-4: Anomaly Detection Model**
 
-#### **Model Training**
+#### **Model Training (REAL DATA ONLY)**
 - [ ] Create `api/ml/anomaly_detector.py`
 - [ ] Implement Isolation Forest model
 - [ ] Implement feature extraction for anomalies
-- [ ] Train model on historical data (90 days)
+- [ ] Train model on **REAL historical cost data** from Athena (90 days minimum)
+- [ ] Use **REAL cost data** from CUR, not mock data
 - [ ] Save trained model
+- [ ] **NO MOCK TRAINING DATA** - must use real AWS CUR data
 
 #### **Anomaly Detection API**
 - [ ] Create `api/routers/ml_anomalies.py`
@@ -92,19 +96,21 @@
 
 ### **Day 1-3: Right-Sizing Model**
 
-#### **Metrics Collection**
-- [ ] Enhance CloudWatch collection for all EC2 instances
-- [ ] Collect CPU utilization (avg, p95, p99)
-- [ ] Collect memory utilization (avg, p95, p99)
-- [ ] Collect network I/O metrics
-- [ ] Store metrics in database
+#### **Metrics Collection (REAL DATA ONLY)**
+- [ ] Enhance CloudWatch collection for **ALL REAL EC2 instances** from AWS account
+- [ ] Collect **REAL CPU utilization** from CloudWatch (avg, p95, p99)
+- [ ] Collect **REAL memory utilization** from CloudWatch (avg, p95, p99)
+- [ ] Collect **REAL network I/O metrics** from CloudWatch
+- [ ] Store **REAL metrics** in database
+- [ ] **NO MOCK METRICS** - all must be queried from real CloudWatch
 
-#### **Right-Sizing Model**
+#### **Right-Sizing Model (REAL DATA ONLY)**
 - [ ] Create `api/ml/right_sizing.py`
-- [ ] Implement instance analysis logic
-- [ ] Calculate required resources (with headroom)
-- [ ] Match instances to optimal size
-- [ ] Calculate savings estimates
+- [ ] Implement instance analysis logic using **REAL CloudWatch metrics**
+- [ ] Calculate required resources from **REAL usage patterns** (with headroom)
+- [ ] Match **REAL instances** to optimal size based on **REAL utilization**
+- [ ] Calculate savings using **REAL AWS pricing** (not estimates)
+- [ ] **NO MOCK RECOMMENDATIONS** - all must be based on real analysis
 
 #### **Risk Assessment**
 - [ ] Implement risk level calculation (low/medium/high)
@@ -117,13 +123,14 @@
 
 ### **Day 4-5: Right-Sizing API**
 
-#### **API Endpoint**
+#### **API Endpoint (REAL DATA ONLY)**
 - [ ] Create `api/routers/ml_right_sizing.py`
 - [ ] Implement `GET /api/ml/right-sizing` endpoint
-- [ ] Fetch EC2 instances from AWS
-- [ ] Get CloudWatch metrics for each instance
-- [ ] Generate recommendations
-- [ ] Return formatted recommendations
+- [ ] Fetch **REAL EC2 instances** from AWS using boto3
+- [ ] Get **REAL CloudWatch metrics** for each instance
+- [ ] Generate recommendations from **REAL analysis**
+- [ ] Return formatted recommendations with **REAL data**
+- [ ] **NO MOCK INSTANCES** - must query real AWS account
 
 #### **Recommendation Format**
 - [ ] Current instance type and cost
@@ -170,12 +177,13 @@
 
 ### **Day 1-2: Cost Forecasting**
 
-#### **Forecasting Model**
+#### **Forecasting Model (REAL DATA ONLY)**
 - [ ] Create `api/ml/forecasting.py`
 - [ ] Implement Prophet or LSTM model
-- [ ] Train on historical cost data (12 months)
-- [ ] Generate forecasts (3, 6, 12 months)
-- [ ] Calculate confidence intervals
+- [ ] Train on **REAL historical cost data** from CUR (12 months minimum)
+- [ ] Generate forecasts from **REAL model predictions** (3, 6, 12 months)
+- [ ] Calculate confidence intervals from **REAL model uncertainty**
+- [ ] **NO MOCK FORECASTS** - must train on real data and generate real predictions
 
 #### **Forecasting API**
 - [ ] Create `api/routers/ml_forecasting.py`
@@ -234,12 +242,14 @@
 - [ ] Create results & impact slides
 - [ ] Create future roadmap slides
 
-#### **Demo Preparation**
-- [ ] Set up demo tenant with sample data
-- [ ] Create demo scenarios
-- [ ] Write demo script
-- [ ] Record demo video (optional)
-- [ ] Prepare Q&A responses
+#### **Presentation Preparation (REAL DATA ONLY)**
+- [ ] Connect to **REAL AWS account** with actual cost data
+- [ ] Use **REAL instances** with real CloudWatch metrics
+- [ ] Create presentation scenarios using **REAL data**
+- [ ] Write presentation script showing **REAL ML outputs**
+- [ ] Record presentation video showing **REAL features** (optional)
+- [ ] Prepare Q&A responses with **REAL technical details**
+- [ ] **NO DEMO DATA** - everything must be production-ready and real
 
 #### **Technical Documentation**
 - [ ] Document ML models architecture
