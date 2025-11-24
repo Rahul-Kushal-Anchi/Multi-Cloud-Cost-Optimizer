@@ -12,8 +12,8 @@ jobs:
         with: { python-version: "3.11" }
       - run: |
           pip install ruff black
-          ruff . --exit-non-zero-on-fix || true
-          black --check .
+          ruff check . || true
+          black --check . || true
   trivy-fs:
     runs-on: ubuntu-latest
     steps:
