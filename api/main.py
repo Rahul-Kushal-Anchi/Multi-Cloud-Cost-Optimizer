@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from statistics import mean
 from uuid import uuid4
+from sqlmodel import Session, select
 import logging
 import sys
 import os
@@ -32,8 +33,6 @@ except ImportError:
 except Exception as e:
     print(f"Warning: CUR modules not available: {e}")
     CUR_AVAILABLE = False
-
-from sqlmodel import Session, select
 
 try:
     from api.auth_onboarding.models import Tenant, UserSettings, User, default_notifications, default_alerts, default_preferences

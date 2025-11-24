@@ -14,7 +14,7 @@
 1. **Sign in to GitHub** (if not already signed in)
 
 2. **Click this link** (it will auto-populate everything):
-   ```
+   ```text
    https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/compare/main...test-coderabbit-only-review
    ```
 
@@ -23,7 +23,7 @@
 4. **Fill in the PR details:**
    - **Title**: `Test CodeRabbit review (no other bots)`
    - **Description**: 
-     ```
+     ```md
      This PR tests CodeRabbit review functionality without other AI bots.
      
      **Changes:**
@@ -39,7 +39,7 @@
 ### Method 2: Manual Steps
 
 1. **Go to your repository:**
-   ```
+   ```text
    https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer
    ```
 
@@ -85,7 +85,7 @@ If CodeRabbit is working correctly, you should see:
 If CodeRabbit still skips the review:
 
 1. **Check if Macroscope bot is disabled:**
-   - Go to: https://github.com/settings/installations
+   - Go to: [GitHub application installations](https://github.com/settings/installations)
    - Verify Macroscope is not active
 
 2. **Manually trigger CodeRabbit:**
@@ -98,9 +98,9 @@ If CodeRabbit still skips the review:
 
 ## 🔗 Quick Links
 
-- **Direct PR Creation**: https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/compare/main...test-coderabbit-only-review
-- **Repository**: https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer
-- **Pull Requests**: https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/pulls
+- **Direct PR Creation**: [PR Creation](https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/compare/main...test-coderabbit-only-review)
+- **Repository**: [Repository](https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer)
+- **Pull Requests**: [Pull Requests](https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/pulls)
 
 ---
 

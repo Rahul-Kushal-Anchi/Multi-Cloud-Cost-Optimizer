@@ -2,13 +2,13 @@
 
 ## Quick Access
 
-**CodeRabbit Dashboard:** https://app.coderabbit.ai/
+**CodeRabbit Dashboard:** <https://app.coderabbit.ai/>
 
 ## Step-by-Step Guide
 
 ### 1. Sign In to CodeRabbit Dashboard
 
-1. **Go to:** https://app.coderabbit.ai/
+1. **Go to:** <https://app.coderabbit.ai/>
 2. **Click "GitHub"** button to sign in with your GitHub account
 3. **Authorize CodeRabbit** if prompted (first time only)
 
@@ -44,7 +44,7 @@ Click on a specific PR to see:
 
 You can also view CodeRabbit reviews directly on GitHub:
 
-1. **Go to your PR:** https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/pull/3
+1. **Go to your PR:** <https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/pull/3>
 2. **Check the "Conversation" tab** - CodeRabbit comments appear here
 3. **Check the "Checks" tab** - CodeRabbit status checks
 4. **Check "Files changed" tab** - Inline comments on code
@@ -69,9 +69,9 @@ You can also view CodeRabbit reviews directly on GitHub:
 
 ## Quick Links
 
-- **Dashboard:** https://app.coderabbit.ai/
-- **Current PR:** https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/pull/3
-- **All PRs:** https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/pulls
+- **Dashboard:** <https://app.coderabbit.ai/>
+- **Current PR:** <https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/pull/3>
+- **All PRs:** <https://github.com/Rahul-Kushal-Anchi/Multi-Cloud-Cost-Optimizer/pulls>
 
 ## Troubleshooting
 
@@ -94,7 +94,7 @@ You can also view CodeRabbit reviews directly on GitHub:
 1. **Sign out and sign back in**
 2. **Clear browser cache**
 3. **Try a different browser**
-4. **Check CodeRabbit status:** https://status.coderabbit.ai/
+4. **Check CodeRabbit status:** <https://status.coderabbit.ai/>
 
 ---
 

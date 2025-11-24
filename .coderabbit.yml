@@ -1,33 +1,11 @@
 # CodeRabbit Configuration
 # Documentation: https://docs.coderabbit.ai/configuration/
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
 # Review settings
 reviews:
   enabled: true
   review_all_files: true
-
-# Paths to exclude from review
-exclude_paths:
-  - "**/node_modules/**"
-  - "**/venv/**"
-  - "**/.venv/**"
-  - "**/__pycache__/**"
-  - "**/.pytest_cache/**"
-  - "**/build/**"
-  - "**/dist/**"
-  - "**/.next/**"
-  - "**/coverage/**"
-  - "**/*.min.js"
-  - "**/*.bundle.js"
-  - "**/migrations/**"
-  - "**/package-lock.json"
-  - "**/yarn.lock"
-
-# Suggestions settings
-suggestions:
-  enabled: true
-  auto_apply: false
-  min_confidence: 0.7
 
 # Chat settings
 chat:
