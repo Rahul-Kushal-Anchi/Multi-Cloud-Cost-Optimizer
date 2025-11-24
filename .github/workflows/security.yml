@@ -57,6 +57,9 @@ jobs:
 
   docker-security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -85,16 +88,20 @@ jobs:
         exit-code: '0'
 
     - name: Upload Trivy scan results
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
+      continue-on-error: true
       if: always() && hashFiles('trivy-web-results.sarif') != ''
       with:
         sarif_file: 'trivy-web-results.sarif'
+        category: 'trivy-web'
 
     - name: Upload Trivy API scan results
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
+      continue-on-error: true
       if: always() && hashFiles('trivy-api-results.sarif') != ''
       with:
         sarif_file: 'trivy-api-results.sarif'
+        category: 'trivy-api'
 
   code-quality:
     runs-on: ubuntu-latest
