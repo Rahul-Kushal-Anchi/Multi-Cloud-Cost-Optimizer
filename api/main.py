@@ -19,12 +19,14 @@ if parent_dir not in sys.path:
 try:
     from api.secure.deps import get_tenant_session_and_meta
     from api.secure.aws.athena_costs import run_athena_query, cur_cost_query_sql
+
     CUR_AVAILABLE = True
 except ImportError:
     try:
         # Try direct import for Docker container
         from secure.deps import get_tenant_session_and_meta
         from secure.aws.athena_costs import run_athena_query, cur_cost_query_sql
+
         CUR_AVAILABLE = True
     except Exception as e:
         # Log import errors for debugging deployment issues
@@ -35,12 +37,26 @@ except Exception as e:
     CUR_AVAILABLE = False
 
 try:
-    from api.auth_onboarding.models import Tenant, UserSettings, User, default_notifications, default_alerts, default_preferences
+    from api.auth_onboarding.models import (
+        Tenant,
+        UserSettings,
+        User,
+        default_notifications,
+        default_alerts,
+        default_preferences,
+    )
     from api.auth_onboarding.routes import get_session
     from api.auth_onboarding.current import get_current_ctx
     from api.auth_onboarding.security import hash_password, verify_password
 except ImportError:
-    from auth_onboarding.models import Tenant, UserSettings, User, default_notifications, default_alerts, default_preferences
+    from auth_onboarding.models import (
+        Tenant,
+        UserSettings,
+        User,
+        default_notifications,
+        default_alerts,
+        default_preferences,
+    )
     from auth_onboarding.routes import get_session
     from auth_onboarding.current import get_current_ctx
     from auth_onboarding.security import hash_password, verify_password
@@ -52,11 +68,13 @@ except ImportError:
 
 try:
     from api.real_costs import get_cost_client
+
     COST_EXPLORER_AVAILABLE = True
 except ImportError:
     try:
         # Try direct import for Docker container
         from real_costs import get_cost_client
+
         COST_EXPLORER_AVAILABLE = True
     except Exception as e:
         print(f"Warning: Cost Explorer modules not available: {e}")
@@ -65,9 +83,17 @@ except Exception as e:
     print(f"Warning: Cost Explorer modules not available: {e}")
     COST_EXPLORER_AVAILABLE = False
 
-app = FastAPI(title="Cost Optimizer API", docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(
+    title="Cost Optimizer API", docs_url="/api/docs", openapi_url="/api/openapi.json"
+)
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 logger = logging.getLogger("api.cost_optimizer")
 logger.setLevel(logging.INFO)
@@ -78,10 +104,12 @@ try:
     from api.auth_onboarding.admin import router as admin_router
     from api.auth_onboarding.owner_bootstrap import router as owner_bootstrap_router
     from api.auth_onboarding.invite import router as invite_router
+
     app.include_router(auth_router)
     app.include_router(admin_router)
     app.include_router(owner_bootstrap_router)
     app.include_router(invite_router)
+
     # Initialize database on startup
     @app.on_event("startup")
     def startup_db():
@@ -89,24 +117,29 @@ try:
             init_db()
         except Exception as e:
             print(f"Warning: Database init skipped: {e}")
+
 except ImportError:
     try:
         from auth_onboarding.routes import router as auth_router, init_db
         from auth_onboarding.admin import router as admin_router
         from auth_onboarding.owner_bootstrap import router as owner_bootstrap_router
         from auth_onboarding.invite import router as invite_router
+
         app.include_router(auth_router)
         app.include_router(admin_router)
         app.include_router(owner_bootstrap_router)
         app.include_router(invite_router)
+
         @app.on_event("startup")
         def startup_db():
             try:
                 init_db()
             except Exception as e:
                 print(f"Warning: Database init skipped: {e}")
+
     except Exception as e:
         import traceback
+
         print(f"Warning: Auth router not available: {e}")
         print("Full traceback:")
         traceback.print_exc()
@@ -115,16 +148,19 @@ except ImportError:
 # Include Athena costs router (tenant-specific CUR queries)
 try:
     from api.secure.aws.athena_costs import router as athena_costs_router
+
     app.include_router(athena_costs_router)
 except ImportError:
     try:
         from secure.aws.athena_costs import router as athena_costs_router
+
         app.include_router(athena_costs_router)
     except Exception as e:
         print(f"Warning: Athena costs router not available: {e}")
 
+
 @app.get("/healthz", include_in_schema=False)
-def healthz(): 
+def healthz():
     return {"ok": True}
 
 
@@ -133,11 +169,14 @@ def health_root():
     """Alias for container health checks that expect /health."""
     return {"ok": True}
 
+
 health_router = APIRouter()
 
+
 @health_router.get("/healthz", include_in_schema=False)
-def healthz_api(): 
+def healthz_api():
     return {"ok": True}
+
 
 app.include_router(health_router, prefix="/api")
 
@@ -156,7 +195,9 @@ def parse_time_range(value: str) -> int:
     return mapping.get(value, 30)
 
 
-def ensure_user_settings(session: Session, user_id: int, tenant_id: Optional[int], email: str) -> UserSettings:
+def ensure_user_settings(
+    session: Session, user_id: int, tenant_id: Optional[int], email: str
+) -> UserSettings:
     settings = session.exec(
         select(UserSettings).where(UserSettings.user_id == user_id)
     ).first()
@@ -167,7 +208,7 @@ def ensure_user_settings(session: Session, user_id: int, tenant_id: Optional[int
             notifications=default_notifications(),
             alerts=default_alerts(),
             preferences=default_preferences(),
-            profile={"email": email, "name": email.split("@")[0]}
+            profile={"email": email, "name": email.split("@")[0]},
         )
         session.add(settings)
         session.commit()
@@ -185,11 +226,13 @@ def serialize_settings(settings: UserSettings) -> Dict[str, Any]:
         "notifications": settings.notifications or default_notifications(),
         "alerts": settings.alerts or default_alerts(),
         "preferences": settings.preferences or default_preferences(),
-        "profile": settings.profile or {}
+        "profile": settings.profile or {},
     }
 
 
-def resolve_tenant(session: Session, authorization: str, tenant_id_override: Optional[int] = None) -> Tuple[Dict[str, Any], Tenant]:
+def resolve_tenant(
+    session: Session, authorization: str, tenant_id_override: Optional[int] = None
+) -> Tuple[Dict[str, Any], Tenant]:
     ctx = get_current_ctx(authorization, session)
 
     if tenant_id_override is not None:
@@ -206,17 +249,22 @@ def resolve_tenant(session: Session, authorization: str, tenant_id_override: Opt
         if tenant is None:
             raise HTTPException(
                 status_code=400,
-                detail="No tenants have been connected yet. Please connect a tenant first."
+                detail="No tenants have been connected yet. Please connect a tenant first.",
             )
     else:
         tenant = session.get(Tenant, ctx.tenant_id)
         if tenant is None:
             raise HTTPException(status_code=404, detail="Tenant not found")
 
-    if not tenant.aws_role_arn or not tenant.external_id or not tenant.athena_db or not tenant.athena_table:
+    if (
+        not tenant.aws_role_arn
+        or not tenant.external_id
+        or not tenant.athena_db
+        or not tenant.athena_table
+    ):
         raise HTTPException(
             status_code=400,
-            detail="Tenant is not fully connected to AWS CUR. Please complete the connection."
+            detail="Tenant is not fully connected to AWS CUR. Please complete the connection.",
         )
 
     return ctx, tenant
@@ -224,12 +272,13 @@ def resolve_tenant(session: Session, authorization: str, tenant_id_override: Opt
 
 def fetch_tenant_cost_data(tenant: Tenant, days: int) -> Dict[str, Any]:
     if not CUR_AVAILABLE:
-        raise HTTPException(status_code=503, detail="CUR integration is not available on this deployment.")
+        raise HTTPException(
+            status_code=503,
+            detail="CUR integration is not available on this deployment.",
+        )
 
     session = assume_vendor_role(
-        tenant.aws_role_arn,
-        tenant.external_id,
-        tenant.region or "us-east-1"
+        tenant.aws_role_arn, tenant.external_id, tenant.region or "us-east-1"
     )
 
     workgroup = tenant.athena_workgroup or "primary"
@@ -240,14 +289,24 @@ def fetch_tenant_cost_data(tenant: Tenant, days: int) -> Dict[str, Any]:
         session,
         workgroup=workgroup,
         database=database,
-        query=cur_cost_query_sql(table, days)
+        query=cur_cost_query_sql(table, days),
     )
-    logger.info("cur_fetch tenant=%s days=%s services_raw_sample=%s", tenant.id, days, service_rows[:3])
+    logger.info(
+        "cur_fetch tenant=%s days=%s services_raw_sample=%s",
+        tenant.id,
+        days,
+        service_rows[:3],
+    )
 
     services: List[Dict[str, Any]] = []
     total_service_cost = 0.0
     for row in service_rows:
-        name = row.get("service") or row.get("SERVICE") or row.get("product_product_name") or "Other"
+        name = (
+            row.get("service")
+            or row.get("SERVICE")
+            or row.get("product_product_name")
+            or "Other"
+        )
         try:
             cost = float(row.get("cost") or row.get("COST") or 0)
         except (TypeError, ValueError):
@@ -255,16 +314,24 @@ def fetch_tenant_cost_data(tenant: Tenant, days: int) -> Dict[str, Any]:
         if cost <= 0:
             continue
         total_service_cost += cost
-        services.append({
-            "name": name.replace("Amazon ", "").replace("AWS ", ""),
-            "cost": round(cost, 2),
-        })
+        services.append(
+            {
+                "name": name.replace("Amazon ", "").replace("AWS ", ""),
+                "cost": round(cost, 2),
+            }
+        )
 
     services.sort(key=lambda s: s["cost"], reverse=True)
     baseline_pct = (100 / len(services)) if services else 0.0
     for svc in services:
-        svc["percentage"] = round((svc["cost"] / total_service_cost) * 100, 2) if total_service_cost else 0.0
-        svc["trend"] = round(svc["percentage"] - baseline_pct, 2) if baseline_pct else 0.0
+        svc["percentage"] = (
+            round((svc["cost"] / total_service_cost) * 100, 2)
+            if total_service_cost
+            else 0.0
+        )
+        svc["trend"] = (
+            round(svc["percentage"] - baseline_pct, 2) if baseline_pct else 0.0
+        )
 
     daily_query = f"""
         SELECT 
@@ -278,12 +345,14 @@ def fetch_tenant_cost_data(tenant: Tenant, days: int) -> Dict[str, Any]:
     """
 
     daily_rows = run_athena_query(
-        session,
-        workgroup=workgroup,
-        database=database,
-        query=daily_query
+        session, workgroup=workgroup, database=database, query=daily_query
     )
-    logger.info("cur_fetch tenant=%s days=%s daily_raw_sample=%s", tenant.id, days, daily_rows[:3])
+    logger.info(
+        "cur_fetch tenant=%s days=%s daily_raw_sample=%s",
+        tenant.id,
+        days,
+        daily_rows[:3],
+    )
 
     daily_data: List[Dict[str, Any]] = []
     for row in daily_rows:
@@ -300,7 +369,9 @@ def fetch_tenant_cost_data(tenant: Tenant, days: int) -> Dict[str, Any]:
     avg_daily = mean([item["cost"] for item in daily_data]) if daily_data else 0.0
 
     for item in daily_data:
-        item["forecast"] = round(avg_daily * 1.08, 2) if avg_daily else round(item["cost"] * 1.05, 2)
+        item["forecast"] = (
+            round(avg_daily * 1.08, 2) if avg_daily else round(item["cost"] * 1.05, 2)
+        )
         item["savings"] = round(item["cost"] * 0.18, 2)
 
     return {
@@ -322,76 +393,99 @@ def build_dynamic_alerts(cost_summary: Dict[str, Any]) -> List[Dict[str, Any]]:
     previous_avg = mean(previous_window) if previous_window else latest
 
     if previous_avg and latest > previous_avg * DEFAULT_ALERT_THRESHOLD_MULTIPLIER:
-        alerts.append({
-            "id": "auto-cost-spike",
-            "type": "cost_spike",
-            "severity": "high",
-            "title": "Cost spike detected",
-            "message": f"Daily spend ${latest:,.2f} exceeded baseline ${previous_avg:,.2f}",
-            "timestamp": datetime.utcnow().isoformat(),
-            "status": "active",
-            "threshold": round(previous_avg * DEFAULT_ALERT_THRESHOLD_MULTIPLIER, 2),
-            "currentValue": round(latest, 2),
-            "service": "Overall",
-            "region": "All"
-        })
+        alerts.append(
+            {
+                "id": "auto-cost-spike",
+                "type": "cost_spike",
+                "severity": "high",
+                "title": "Cost spike detected",
+                "message": f"Daily spend ${latest:,.2f} exceeded baseline ${previous_avg:,.2f}",
+                "timestamp": datetime.utcnow().isoformat(),
+                "status": "active",
+                "threshold": round(
+                    previous_avg * DEFAULT_ALERT_THRESHOLD_MULTIPLIER, 2
+                ),
+                "currentValue": round(latest, 2),
+                "service": "Overall",
+                "region": "All",
+            }
+        )
 
     if previous_avg and latest < previous_avg * 0.7:
-        alerts.append({
-            "id": "auto-sudden-drop",
-            "type": "usage_drop",
-            "severity": "medium",
-            "title": "Significant drop in spend",
-            "message": f"Latest spend ${latest:,.2f} is much lower than typical ${previous_avg:,.2f}",
-            "timestamp": datetime.utcnow().isoformat(),
-            "status": "active",
-            "threshold": round(previous_avg * 0.7, 2),
-            "currentValue": round(latest, 2),
-            "service": "Overall",
-            "region": "All"
-        })
+        alerts.append(
+            {
+                "id": "auto-sudden-drop",
+                "type": "usage_drop",
+                "severity": "medium",
+                "title": "Significant drop in spend",
+                "message": f"Latest spend ${latest:,.2f} is much lower than typical ${previous_avg:,.2f}",
+                "timestamp": datetime.utcnow().isoformat(),
+                "status": "active",
+                "threshold": round(previous_avg * 0.7, 2),
+                "currentValue": round(latest, 2),
+                "service": "Overall",
+                "region": "All",
+            }
+        )
 
     return [
-        {**alert, **dynamic_alert_overrides.get(alert["id"], {})}
-        for alert in alerts
+        {**alert, **dynamic_alert_overrides.get(alert["id"], {})} for alert in alerts
     ]
 
 
-def build_optimization_recommendations(cost_summary: Dict[str, Any]) -> List[Dict[str, Any]]:
+def build_optimization_recommendations(
+    cost_summary: Dict[str, Any],
+) -> List[Dict[str, Any]]:
     recommendations: List[Dict[str, Any]] = []
     services = cost_summary["services"]
 
     for index, service in enumerate(services[:5]):
         savings_estimate = round(service["cost"] * 0.25, 2)
-        impact = "high" if service["percentage"] >= 25 else "medium" if service["percentage"] >= 10 else "low"
+        impact = (
+            "high"
+            if service["percentage"] >= 25
+            else "medium" if service["percentage"] >= 10 else "low"
+        )
         effort = "low" if index == 0 else "medium" if index <= 2 else "high"
 
         rec_id = f"opt-{service['name'].lower().replace(' ', '-')}"
-        recommendations.append({
-            "id": rec_id,
-            "type": "cost_optimization",
-            "service": service["name"],
-            "description": f"Review {service['name']} spend (${service['cost']:,.2f}) for rightsizing and savings opportunities.",
-            "potentialSavings": savings_estimate,
-            "impact": impact,
-            "effort": effort,
-            "status": optimization_status_overrides.get(rec_id, {}).get("status", "recommended"),
-            "priority": "high" if impact == "high" else "medium" if impact == "medium" else "low"
-        })
+        recommendations.append(
+            {
+                "id": rec_id,
+                "type": "cost_optimization",
+                "service": service["name"],
+                "description": f"Review {service['name']} spend (${service['cost']:,.2f}) for rightsizing and savings opportunities.",
+                "potentialSavings": savings_estimate,
+                "impact": impact,
+                "effort": effort,
+                "status": optimization_status_overrides.get(rec_id, {}).get(
+                    "status", "recommended"
+                ),
+                "priority": (
+                    "high"
+                    if impact == "high"
+                    else "medium" if impact == "medium" else "low"
+                ),
+            }
+        )
 
     if cost_summary["total_cost"] > 0:
         rec_id = "opt-reserved-instance-review"
-        recommendations.append({
-            "id": rec_id,
-            "type": "purchase_planning",
-            "service": "EC2/RDS",
-            "description": "Evaluate Reserved Instances or Savings Plans to lock in savings for steady workloads.",
-            "potentialSavings": round(cost_summary["total_cost"] * 0.18, 2),
-            "impact": "medium",
-            "effort": "medium",
-            "status": optimization_status_overrides.get(rec_id, {}).get("status", "recommended"),
-            "priority": "medium"
-        })
+        recommendations.append(
+            {
+                "id": rec_id,
+                "type": "purchase_planning",
+                "service": "EC2/RDS",
+                "description": "Evaluate Reserved Instances or Savings Plans to lock in savings for steady workloads.",
+                "potentialSavings": round(cost_summary["total_cost"] * 0.18, 2),
+                "impact": "medium",
+                "effort": "medium",
+                "status": optimization_status_overrides.get(rec_id, {}).get(
+                    "status", "recommended"
+                ),
+                "priority": "medium",
+            }
+        )
 
     return recommendations
 
@@ -406,6 +500,7 @@ class ServiceCost(BaseModel):
     cost: float
     percentage: float
 
+
 class Dashboard(BaseModel):
     totalCost: float
     monthlyCost: float
@@ -416,18 +511,23 @@ class Dashboard(BaseModel):
     forecast: float
     topServices: List[ServiceCost] = []
 
+
 @app.get("/api/dashboard", response_model=Dashboard)
 def dashboard(
     timeRange: str = "7d",
     authorization: str = Header(...),
     session: Session = Depends(get_session),
-    tenantId: Optional[int] = Query(None, alias="tenantId")
+    tenantId: Optional[int] = Query(None, alias="tenantId"),
 ):
     days = parse_time_range(timeRange)
     ctx, tenant = resolve_tenant(session, authorization, tenantId)
     cost_summary = fetch_tenant_cost_data(tenant, days)
 
-    monthly_cost = round(cost_summary["total_cost"] * (30 / days), 2) if days else cost_summary["total_cost"]
+    monthly_cost = (
+        round(cost_summary["total_cost"] * (30 / days), 2)
+        if days
+        else cost_summary["total_cost"]
+    )
     daily_cost = round(cost_summary["avg_daily"], 2)
     savings = round(cost_summary["total_cost"] * 0.18, 2)
     dynamic_alerts = build_dynamic_alerts(cost_summary)
@@ -451,29 +551,32 @@ def dashboard(
         "alerts": len(dynamic_alerts) + len(manual_alerts),
         "optimizationScore": optimization_score,
         "forecast": forecast,
-        "topServices": top_services
+        "topServices": top_services,
     }
 
+
 # ---------- Costs endpoints ----------
+
 
 @app.get("/api/costs/trends")
 def get_cost_trends(
     timeRange: str = "7d",
     authorization: str = Header(...),
     session: Session = Depends(get_session),
-    tenantId: Optional[int] = Query(None, alias="tenantId")
+    tenantId: Optional[int] = Query(None, alias="tenantId"),
 ):
     days = parse_time_range(timeRange)
     _, tenant = resolve_tenant(session, authorization, tenantId)
     cost_summary = fetch_tenant_cost_data(tenant, days)
     return {"data": cost_summary["daily"], "period": timeRange}
 
+
 @app.get("/api/costs/services")
 def get_service_costs(
     timeRange: str = "7d",
     authorization: str = Header(...),
     session: Session = Depends(get_session),
-    tenantId: Optional[int] = Query(None, alias="tenantId")
+    tenantId: Optional[int] = Query(None, alias="tenantId"),
 ):
     days = parse_time_range(timeRange)
     _, tenant = resolve_tenant(session, authorization, tenantId)
@@ -481,15 +584,18 @@ def get_service_costs(
 
     services_payload = []
     for svc in cost_summary["services"]:
-        services_payload.append({
-            "name": svc["name"],
-            "cost": svc["cost"],
-            "percentage": svc["percentage"],
-            "change": svc["trend"],
-            "trend": svc["trend"]
-        })
+        services_payload.append(
+            {
+                "name": svc["name"],
+                "cost": svc["cost"],
+                "percentage": svc["percentage"],
+                "change": svc["trend"],
+                "trend": svc["trend"],
+            }
+        )
 
     return {"services": services_payload, "total": cost_summary["total_cost"]}
+
 
 # ---------- Alerts endpoints ----------
 class Alert(BaseModel):
@@ -513,7 +619,7 @@ def get_alerts(
     authorization: str = Header(...),
     session: Session = Depends(get_session),
     tenantId: Optional[int] = Query(None, alias="tenantId"),
-    timeRange: str = "30d"
+    timeRange: str = "30d",
 ):
     days = parse_time_range(timeRange)
     ctx, tenant = resolve_tenant(session, authorization, tenantId)
@@ -530,6 +636,7 @@ def get_alerts(
 
     return combined
 
+
 class CreateAlertRequest(BaseModel):
     type: str
     severity: str
@@ -538,12 +645,13 @@ class CreateAlertRequest(BaseModel):
     threshold: Optional[float] = 0
     currentValue: Optional[float] = 0
 
+
 @app.post("/api/alerts")
 def create_alert(
     alert: CreateAlertRequest,
     authorization: str = Header(...),
     session: Session = Depends(get_session),
-    tenantId: Optional[int] = Query(None, alias="tenantId")
+    tenantId: Optional[int] = Query(None, alias="tenantId"),
 ):
     ctx, tenant = resolve_tenant(session, authorization, tenantId)
     tenant_alerts = get_user_alerts_for_tenant(tenant.id)
@@ -561,13 +669,15 @@ def create_alert(
         "threshold": alert.threshold or 0,
         "currentValue": alert.currentValue or 0,
         "region": "All",
-        "createdBy": ctx.user_email
+        "createdBy": ctx.user_email,
     }
     tenant_alerts.append(new_alert)
     return new_alert
 
+
 class UpdateAlertRequest(BaseModel):
     status: Optional[str] = None
+
 
 @app.put("/api/alerts/{alert_id}")
 def update_alert(
@@ -576,7 +686,7 @@ def update_alert(
     authorization: str = Header(...),
     session: Session = Depends(get_session),
     tenantId: Optional[int] = Query(None, alias="tenantId"),
-    timeRange: str = "30d"
+    timeRange: str = "30d",
 ):
     _, tenant = resolve_tenant(session, authorization, tenantId)
     tenant_alerts = get_user_alerts_for_tenant(tenant.id)
@@ -600,12 +710,13 @@ def update_alert(
 
     raise HTTPException(status_code=404, detail="Alert not found")
 
+
 @app.delete("/api/alerts/{alert_id}")
 def delete_alert(
     alert_id: str,
     authorization: str = Header(...),
     session: Session = Depends(get_session),
-    tenantId: Optional[int] = Query(None, alias="tenantId")
+    tenantId: Optional[int] = Query(None, alias="tenantId"),
 ):
     _, tenant = resolve_tenant(session, authorization, tenantId)
     tenant_alerts = get_user_alerts_for_tenant(tenant.id)
@@ -621,6 +732,7 @@ def delete_alert(
 
     raise HTTPException(status_code=404, detail="Alert not found")
 
+
 # ---------- Optimizations endpoints ----------
 class Optimization(BaseModel):
     id: str
@@ -633,6 +745,7 @@ class Optimization(BaseModel):
     status: str
     priority: Optional[str] = "medium"
 
+
 @app.get("/api/optimizations")
 def get_optimizations(
     service: Optional[str] = None,
@@ -640,7 +753,7 @@ def get_optimizations(
     authorization: str = Header(...),
     session: Session = Depends(get_session),
     tenantId: Optional[int] = Query(None, alias="tenantId"),
-    timeRange: str = "30d"
+    timeRange: str = "30d",
 ):
     _, tenant = resolve_tenant(session, authorization, tenantId)
     cost_summary = fetch_tenant_cost_data(tenant, parse_time_range(timeRange))
@@ -653,12 +766,13 @@ def get_optimizations(
 
     return recommendations
 
+
 @app.post("/api/optimizations/{opt_id}/apply")
 def apply_optimization(
     opt_id: str,
     authorization: str = Header(...),
     session: Session = Depends(get_session),
-    tenantId: Optional[int] = Query(None, alias="tenantId")
+    tenantId: Optional[int] = Query(None, alias="tenantId"),
 ):
     resolve_tenant(session, authorization, tenantId)
     override = optimization_status_overrides.setdefault(opt_id, {})
@@ -667,8 +781,9 @@ def apply_optimization(
     return {
         "success": True,
         "message": f"Optimization {opt_id} marked as applied.",
-        "appliedAt": override["appliedAt"]
+        "appliedAt": override["appliedAt"],
     }
+
 
 # ---------- Settings & Profile endpoints ----------
 class UpdateSettingsRequest(BaseModel):
@@ -690,8 +805,7 @@ class ChangePasswordRequest(BaseModel):
 
 @app.get("/api/settings")
 def get_settings(
-    authorization: str = Header(...),
-    session: Session = Depends(get_session)
+    authorization: str = Header(...), session: Session = Depends(get_session)
 ):
     ctx = get_current_ctx(authorization, session)
     settings = ensure_user_settings(session, ctx.user_id, ctx.tenant_id, ctx.user_email)
@@ -702,14 +816,16 @@ def get_settings(
 def update_settings(
     settings: UpdateSettingsRequest,
     authorization: str = Header(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     ctx = get_current_ctx(authorization, session)
     user = session.get(User, ctx.user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    db_settings = ensure_user_settings(session, ctx.user_id, ctx.tenant_id, ctx.user_email)
+    db_settings = ensure_user_settings(
+        session, ctx.user_id, ctx.tenant_id, ctx.user_email
+    )
 
     if settings.notifications is not None:
         current = db_settings.notifications or default_notifications()
@@ -727,11 +843,16 @@ def update_settings(
         db_settings.preferences = current
 
     if settings.profile is not None:
-        profile = db_settings.profile or {"email": user.email, "name": user.email.split("@")[0]}
+        profile = db_settings.profile or {
+            "email": user.email,
+            "name": user.email.split("@")[0],
+        }
         profile.update(settings.profile)
         new_email = profile.get("email")
         if new_email and new_email.lower() != user.email.lower():
-            existing = session.exec(select(User).where(User.email == new_email.lower())).first()
+            existing = session.exec(
+                select(User).where(User.email == new_email.lower())
+            ).first()
             if existing and existing.id != user.id:
                 raise HTTPException(status_code=400, detail="Email is already in use")
             user.email = new_email.lower()
@@ -748,8 +869,7 @@ def update_settings(
 
 @app.get("/api/user/profile")
 def get_profile(
-    authorization: str = Header(...),
-    session: Session = Depends(get_session)
+    authorization: str = Header(...), session: Session = Depends(get_session)
 ):
     ctx = get_current_ctx(authorization, session)
     user = session.get(User, ctx.user_id)
@@ -766,7 +886,11 @@ def get_profile(
         "role": ctx.role,
         "tenantId": ctx.tenant_id,
         "settings": serialize_settings(settings),
-        "updatedAt": settings.updated_at.isoformat() if hasattr(settings, "updated_at") and settings.updated_at else None
+        "updatedAt": (
+            settings.updated_at.isoformat()
+            if hasattr(settings, "updated_at") and settings.updated_at
+            else None
+        ),
     }
 
 
@@ -774,7 +898,7 @@ def get_profile(
 def update_profile(
     body: UpdateProfileRequest,
     authorization: str = Header(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     ctx = get_current_ctx(authorization, session)
     user = session.get(User, ctx.user_id)
@@ -782,7 +906,10 @@ def update_profile(
         raise HTTPException(status_code=404, detail="User not found")
 
     settings = ensure_user_settings(session, ctx.user_id, ctx.tenant_id, ctx.user_email)
-    profile = settings.profile or {"email": user.email, "name": user.email.split("@")[0]}
+    profile = settings.profile or {
+        "email": user.email,
+        "name": user.email.split("@")[0],
+    }
 
     if body.name is not None:
         profile["name"] = body.name
@@ -809,7 +936,7 @@ def update_profile(
         "name": profile.get("name") or user.email.split("@")[0],
         "email": profile.get("email") or user.email,
         "role": ctx.role,
-        "settings": serialize_settings(settings)
+        "settings": serialize_settings(settings),
     }
 
 
@@ -817,7 +944,7 @@ def update_profile(
 def change_password(
     body: ChangePasswordRequest,
     authorization: str = Header(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     ctx = get_current_ctx(authorization, session)
     user = session.get(User, ctx.user_id)
@@ -828,7 +955,9 @@ def change_password(
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
     if len(body.newPassword) < 8:
-        raise HTTPException(status_code=400, detail="New password must be at least 8 characters long")
+        raise HTTPException(
+            status_code=400, detail="New password must be at least 8 characters long"
+        )
 
     user.password_hash = hash_password(body.newPassword)
     session.add(user)

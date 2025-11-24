@@ -17,12 +17,11 @@ def get_tenant_session_and_meta(tenant_id: int | None = None):
         try:
             with Session(_engine) as session:
                 from api.auth_onboarding.models import Tenant
+
                 tenant = session.get(Tenant, tenant_id)
                 if tenant and tenant.aws_role_arn:
                     session = assume_vendor_role(
-                        tenant.aws_role_arn,
-                        tenant.external_id,
-                        tenant.region
+                        tenant.aws_role_arn, tenant.external_id, tenant.region
                     )
                     meta = {
                         "role_arn": tenant.aws_role_arn,
@@ -35,7 +34,7 @@ def get_tenant_session_and_meta(tenant_id: int | None = None):
                     return session, meta
         except Exception as e:
             print(f"Warning: Could not load tenant from DB: {e}")
-    
+
     # Fallback to hardcoded values (for development/demo)
     meta = {
         "role_arn": "arn:aws:iam::123456789012:role/VendorCostReadOnlyRole",

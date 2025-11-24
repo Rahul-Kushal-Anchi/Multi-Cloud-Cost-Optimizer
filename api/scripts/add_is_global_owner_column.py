@@ -2,6 +2,7 @@
 Add is_global_owner column to users table if it doesn't exist.
 This script can be run inside the ECS container or locally.
 """
+
 import os
 import sys
 from sqlalchemy import create_engine, text
@@ -40,17 +41,25 @@ try:
     with engine.connect() as conn:
         # PostgreSQL doesn't support DO blocks in regular execute, use execute_driver_sql or execute(text())
         # Let's use a simpler approach
-        result = conn.execute(text("""
+        result = conn.execute(
+            text(
+                """
             SELECT column_name 
             FROM information_schema.columns 
             WHERE table_name = 'user' 
             AND column_name = 'is_global_owner'
-        """))
+        """
+            )
+        )
         exists = result.fetchone() is not None
-        
+
         if not exists:
             print("Adding is_global_owner column...")
-            conn.execute(text('ALTER TABLE "user" ADD COLUMN is_global_owner BOOLEAN DEFAULT FALSE'))
+            conn.execute(
+                text(
+                    'ALTER TABLE "user" ADD COLUMN is_global_owner BOOLEAN DEFAULT FALSE'
+                )
+            )
             conn.commit()
             print("✅ Column is_global_owner added successfully")
         else:
@@ -60,4 +69,3 @@ except Exception as e:
     sys.exit(1)
 
 print("Migration completed!")
-

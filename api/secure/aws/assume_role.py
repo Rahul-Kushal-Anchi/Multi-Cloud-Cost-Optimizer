@@ -1,6 +1,7 @@
 import boto3
 from botocore.config import Config
 
+
 def assume_vendor_role(role_arn: str, external_id: str, region: str = "us-east-1"):
     sts = boto3.client("sts", config=Config(region_name=region))
     resp = sts.assume_role(
