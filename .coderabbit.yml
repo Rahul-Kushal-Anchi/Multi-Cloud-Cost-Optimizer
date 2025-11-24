@@ -5,6 +5,8 @@
 reviews:
   enabled: true
   review_all_files: true
+  # Force review even if other bots detected (if supported)
+  review_status: true
 
 # Paths to exclude from review
 exclude_paths:
