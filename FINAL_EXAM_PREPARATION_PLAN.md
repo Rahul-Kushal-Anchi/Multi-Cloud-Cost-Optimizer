@@ -1,7 +1,7 @@
 # Final Exam Preparation Plan
 ## December 13, 2025 - Advanced Features & Presentation Prep
 
-**Timeline:** ~3 weeks until presentation  
+**Timeline:** ~3 weeks until presentation (Nov 23 - Dec 13, 2025)  
 **Goal:** Build impressive ML-powered features that demonstrate world-class engineering
 
 ---

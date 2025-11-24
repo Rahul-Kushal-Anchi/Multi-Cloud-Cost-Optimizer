@@ -4,7 +4,7 @@
 ---
 
 ## 📅 **WEEK 1: ML Foundation & Anomaly Detection**
-**Dates:** November 25 - December 1, 2024
+**Dates:** November 25 - December 1, 2025
 
 ### **Day 1-2: Infrastructure Setup**
 
@@ -88,7 +88,7 @@
 ---
 
 ## 📅 **WEEK 2: Right-Sizing & Instance Optimization**
-**Dates:** December 2 - December 8, 2024
+**Dates:** December 2 - December 8, 2025
 
 ### **Day 1-3: Right-Sizing Model**
 
@@ -166,7 +166,7 @@
 ---
 
 ## 📅 **WEEK 3: Polish & Presentation Prep**
-**Dates:** December 9 - December 13, 2024
+**Dates:** December 9 - December 13, 2025
 
 ### **Day 1-2: Cost Forecasting**
 
