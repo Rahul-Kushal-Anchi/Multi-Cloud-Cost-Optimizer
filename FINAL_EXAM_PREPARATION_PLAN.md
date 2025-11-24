@@ -87,7 +87,7 @@
 - [ ] Enhance dashboard with ML insights
 - [ ] Add ML model status indicators
 - [ ] Improve recommendation cards
-- [ ] Add demo data/mockups for presentation
+- [ ] Ensure all UI displays real data (no mockups)
 
 **Days 5: Documentation & Demo Prep**
 - [ ] Create presentation slides
