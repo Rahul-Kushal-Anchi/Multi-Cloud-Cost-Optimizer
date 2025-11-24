@@ -14,10 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { id-token: write, contents: read }
     # Skip deployment if AWS secrets are not configured
-    if: |
-      secrets.AWS_ROLE_ARN != '' &&
-      secrets.ECR_WEB_URI != '' &&
-      secrets.ECR_API_URI != ''
+    if: ${{ secrets.AWS_ROLE_ARN != '' && secrets.ECR_WEB_URI != '' && secrets.ECR_API_URI != '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -66,10 +63,7 @@ jobs:
   skip-deployment:
     runs-on: ubuntu-latest
     # Run only if AWS secrets are missing
-    if: |
-      secrets.AWS_ROLE_ARN == '' ||
-      secrets.ECR_WEB_URI == '' ||
-      secrets.ECR_API_URI == ''
+    if: ${{ secrets.AWS_ROLE_ARN == '' || secrets.ECR_WEB_URI == '' || secrets.ECR_API_URI == '' }}
     steps:
       - name: Skip deployment - AWS not configured
         run: |
