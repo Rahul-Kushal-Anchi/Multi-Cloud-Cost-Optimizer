@@ -25,11 +25,6 @@ export default function ConnectAWS() {
 
   const token = localStorage.getItem('token');
 
-  useEffect(() => {
-    // Check if already connected
-    checkConnection();
-  }, []);
-
   async function checkConnection() {
     try {
       const response = await fetch('/api/tenants/me', {
@@ -49,9 +44,17 @@ export default function ConnectAWS() {
         }));
       }
     } catch (error) {
-      console.error('Error checking connection:', error);
+      console.error('Failed to check connection:', error);
     }
   }
+
+  useEffect(() => {
+    // Check if already connected
+    checkConnection();
+    // Note: checkConnection is intentionally excluded to only run on mount
+    // Adding it to dependencies would cause unnecessary re-checks
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleChange(e) {
     setFormData({

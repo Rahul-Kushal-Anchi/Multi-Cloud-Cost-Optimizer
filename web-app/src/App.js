@@ -10,7 +10,6 @@ import ConnectAWS from './pages/ConnectAWS';
 import Admin from './pages/Admin';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
-import { useAuth } from './services/auth';
 
 // Layout component for authenticated routes
 function AuthenticatedLayout({ children, user, sidebarOpen, setSidebarOpen, healthy, connectionStatus, isOnline }) {
@@ -41,13 +40,39 @@ function AuthenticatedLayout({ children, user, sidebarOpen, setSidebarOpen, heal
 }
 
 export default function App() {
-  const { user, loading } = useAuth();
   const [healthy, setHealthy] = useState(false);
+  // On desktop, sidebar is always open; on mobile, it starts closed
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const [sidebarOpen, setSidebarOpen] = useState(isDesktop);
-  const [connectionStatus, setConnectionStatus] = useState('connected');
+  
+  // Check for auth
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [connectionStatus] = useState('connected');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const isAuthenticated = !!user;
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  
+  // Listen for storage changes to update auth state (for login/logout)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setIsAuthenticated(!!localStorage.getItem('token'));
+      const stored = localStorage.getItem('user');
+      setUser(stored ? JSON.parse(stored) : null);
+    };
+    window.addEventListener('storage', handleStorageChange);
+    // Also check on focus (in case login happened in same window)
+    window.addEventListener('focus', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
+    };
+  }, []);
   
   // Update desktop state on window resize
   useEffect(() => {
@@ -62,7 +87,7 @@ export default function App() {
 
   useEffect(() => {
     const base = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
-    fetch(`${base}/api/healthz`)
+    fetch(`${base}/api/dashboard`)
       .then(r => r.json())
       .then(() => setHealthy(true))
       .catch(() => setHealthy(false));
@@ -78,17 +103,6 @@ export default function App() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your workspace…</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <Router>

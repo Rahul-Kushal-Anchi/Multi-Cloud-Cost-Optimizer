@@ -9,8 +9,6 @@ import {
   X,
   DollarSign,
   TrendingUp,
-  AlertTriangle,
-  PieChart,
   Activity,
   Shield,
   Cloud

@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/auth';
 
 const Navbar = ({ onMenuClick, user, connectionStatus, isOnline }) => {
-  const [notifications, setNotifications] = useState([]);
+  const [notifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [theme, toggleTheme] = useTheme();
