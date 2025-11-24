@@ -35,14 +35,8 @@ def get_tenant_session_and_meta(tenant_id: int | None = None):
         except Exception as e:
             print(f"Warning: Could not load tenant from DB: {e}")
 
-    # Fallback to hardcoded values (for development/demo)
-    meta = {
-        "role_arn": "arn:aws:iam::123456789012:role/VendorCostReadOnlyRole",
-        "external_id": "external-abc123",
-        "region": "us-east-1",
-        "athena_workgroup": "primary",
-        "athena_db": "cur_db",
-        "athena_table": "cur_table",
-    }
-    session = assume_vendor_role(meta["role_arn"], meta["external_id"], meta["region"])
-    return session, meta
+    # No fallback - fail gracefully if tenant not found
+    raise ValueError(
+        f"Tenant {tenant_id} not found or not configured. "
+        "Please ensure the tenant exists and has AWS credentials configured."
+    )

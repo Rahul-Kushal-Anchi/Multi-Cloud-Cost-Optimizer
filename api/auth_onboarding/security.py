@@ -8,9 +8,13 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 
-SECRET_KEY = os.getenv(
-    "APP_JWT_SECRET", "CHANGE_ME_IN_PRODUCTION"
-)  # set in ECS/Secrets Manager
+# JWT Secret - MUST be set via environment variable
+SECRET_KEY = os.getenv("APP_JWT_SECRET")
+if not SECRET_KEY:
+    raise ValueError(
+        "APP_JWT_SECRET environment variable is required. "
+        "Set it in your environment or ECS Secrets Manager."
+    )
 ALGO = "HS256"
 ACCESS_MINUTES = 60 * 8  # 8 hours
 
