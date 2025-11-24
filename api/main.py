@@ -26,6 +26,7 @@ except ImportError:
         from secure.aws.athena_costs import run_athena_query, cur_cost_query_sql
         CUR_AVAILABLE = True
     except Exception as e:
+        # Log import errors for debugging deployment issues
         print(f"Warning: CUR modules not available: {e}")
         CUR_AVAILABLE = False
 except Exception as e:
