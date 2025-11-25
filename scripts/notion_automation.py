@@ -7,16 +7,6 @@ Automatically sets up your Final Exam Prep task tracker in Notion
 import os
 import sys
 from notion_client import Client
-try:
-    from notion_client.errors import APIError
-except ImportError:
-    # Fallback for different versions
-    try:
-        from notion_client.api_errors import APIError
-    except ImportError:
-        # Create a simple exception class if not available
-        class APIError(Exception):
-            pass
 import json
 
 # Your Notion credentials (from environment variables)
