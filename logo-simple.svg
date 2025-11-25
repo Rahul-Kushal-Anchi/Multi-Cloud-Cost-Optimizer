@@ -26,10 +26,5 @@
     <path d="M 0 -8 L 0 8 M -8 0 L 8 0 M -6 -6 L 6 6 M 6 -6 L -6 6" stroke="#ffffff" stroke-width="1.5" fill="none"/>
   </g>
   
-  <!-- Downward Arrow (Cost Reduction) -->
-  <g transform="translate(30, 150)">
-    <path d="M 0 0 L 0 20 M -5 15 L 0 20 L 5 15" stroke="#ef4444" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <text x="8" y="18" font-family="Arial, sans-serif" font-size="10" fill="#ef4444" font-weight="bold">SAVE</text>
-  </g>
 </svg>
 

@@ -12,8 +12,5 @@
   <circle cx="140" cy="60" r="8" fill="#fbbf24"/>
   <path d="M 140 52 L 140 68 M 132 60 L 148 60 M 136 56 L 144 64 M 144 56 L 136 64" stroke="#fbbf24" stroke-width="2"/>
   
-  <!-- Cost Optimization Arrow -->
-  <path d="M 30 130 L 50 130 L 45 125 M 50 130 L 45 135" stroke="#ef4444" stroke-width="3" fill="none"/>
-  <text x="55" y="135" font-family="Arial, sans-serif" font-size="12" fill="#ef4444" font-weight="bold">SAVE</text>
 </svg>
 
