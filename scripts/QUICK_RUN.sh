@@ -35,7 +35,11 @@ echo ""
 echo "📋 Step 3: Checking credentials..."
 if [ -f "scripts/.env" ]; then
     echo "✅ Credentials file found"
+    # Load and export variables from .env file
+    set -a  # Automatically export all variables
     source scripts/.env
+    set +a  # Turn off automatic export
+    echo "✅ Credentials loaded"
 else
     echo "❌ scripts/.env not found"
     echo "   Creating it now..."
@@ -44,7 +48,11 @@ NOTION_TOKEN=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
 NOTION_USER_ID=22dd872b-594c-814c-84b8-0002da5d3d3f
 ENVEOF
     echo "✅ Created scripts/.env"
+    # Load and export variables from .env file
+    set -a  # Automatically export all variables
     source scripts/.env
+    set +a  # Turn off automatic export
+    echo "✅ Credentials loaded"
 fi
 echo ""
 
