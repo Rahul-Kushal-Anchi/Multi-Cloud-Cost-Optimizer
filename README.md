@@ -208,11 +208,28 @@ The repo ships with `build_and_deploy.sh`, which:
 
 ## 📚 Additional Documentation
 
-- [docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md) – living reference for API + frontend modules.
-- [DEPLOYMENT_INSTRUCTIONS.md](DEPLOYMENT_INSTRUCTIONS.md) – operational notes for ECS/ALB setup.
-- [cfn/connect-aws-billing.yml](cfn/connect-aws-billing.yml) – tenant CloudFormation template.
+### **Planning & Roadmaps:**
+- [docs/planning/ML_COST_OPTIMIZATION_ROADMAP.md](docs/planning/ML_COST_OPTIMIZATION_ROADMAP.md) – ML models roadmap and market analysis
+- [docs/planning/ML_MODELS_IMPLEMENTATION_PLAN.md](docs/planning/ML_MODELS_IMPLEMENTATION_PLAN.md) – Technical ML implementation details
+- [docs/planning/FINAL_EXAM_PREPARATION_PLAN.md](docs/planning/FINAL_EXAM_PREPARATION_PLAN.md) – 3-week exam preparation plan
+- [docs/planning/WEEKLY_IMPLEMENTATION_CHECKLIST.md](docs/planning/WEEKLY_IMPLEMENTATION_CHECKLIST.md) – Daily task tracker
 
-Legacy docs (e.g., `PROJECT_STATUS.md`, `EVENT_DRIVEN_ROADMAP.md`) describe the original Streamlit/Lambda architecture and are kept for historical context only.
+### **Requirements:**
+- [docs/requirements/PRODUCTION_REQUIREMENTS.md](docs/requirements/PRODUCTION_REQUIREMENTS.md) – Production requirements (no mock data)
+
+### **Guides:**
+- [docs/guides/CODERRABBIT_REVIEW_GUIDE.md](docs/guides/CODERRABBIT_REVIEW_GUIDE.md) – CodeRabbit setup guide
+- [docs/guides/CODERRABBIT_DASHBOARD_GUIDE.md](docs/guides/CODERRABBIT_DASHBOARD_GUIDE.md) – CodeRabbit dashboard guide
+- [docs/guides/HOW_TO_DOWNLOAD_LOGO.md](docs/guides/HOW_TO_DOWNLOAD_LOGO.md) – Logo download instructions
+
+### **Notion Integration:**
+- [docs/notion/NOTION_IMPORT_READY.md](docs/notion/NOTION_IMPORT_READY.md) – Notion task tracker (ready to import)
+- [docs/notion/NOTION_NEXT_STEPS.md](docs/notion/NOTION_NEXT_STEPS.md) – Notion setup guide
+- [docs/notion/NOTION_AUTOMATION_SETUP.md](docs/notion/NOTION_AUTOMATION_SETUP.md) – Notion automation guide
+
+### **Infrastructure:**
+- [docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md) – living reference for API + frontend modules.
+- [cfn/connect-aws-billing.yml](cfn/connect-aws-billing.yml) – tenant CloudFormation template.
 
 ---
 
