@@ -45,6 +45,8 @@ try:
         default_alerts,
         default_preferences,
     )
+    # Import ML models for database initialization
+    from api.ml.models import MLModel, Anomaly, Recommendation, Forecast, InstanceMetrics
     from api.auth_onboarding.routes import get_session
     from api.auth_onboarding.current import get_current_ctx
     from api.auth_onboarding.security import hash_password, verify_password

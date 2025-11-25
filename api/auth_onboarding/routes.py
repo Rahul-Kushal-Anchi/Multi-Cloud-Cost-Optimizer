@@ -10,6 +10,11 @@ import os
 import json
 
 from .models import Tenant, User, AuditLog
+# Import ML models for database initialization
+try:
+    from api.ml.models import MLModel, Anomaly, Recommendation, Forecast, InstanceMetrics
+except ImportError:
+    pass  # ML models optional during initial setup
 from .security import hash_password, verify_password, create_access_token, decode_token
 
 try:
