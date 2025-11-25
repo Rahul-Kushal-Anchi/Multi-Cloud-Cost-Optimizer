@@ -62,7 +62,7 @@ def extract_cost_features(cost_data: pd.DataFrame) -> pd.DataFrame:
     df['cost_lag_30'] = df['cost'].shift(30)
     
     # Fill NaN values (using forward fill then backward fill)
-    df = df.fillna(method='ffill').fillna(method='bfill').fillna(0)
+    df = df.ffill().bfill().fillna(0)
     
     return df
 
