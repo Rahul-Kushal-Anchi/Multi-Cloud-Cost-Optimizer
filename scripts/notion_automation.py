@@ -132,7 +132,7 @@ def create_database_view(notion, page_id):
                     "options": [
                         {"name": "Not Started", "color": "gray"},
                         {"name": "In Progress", "color": "yellow"},
-                        {"name": "Complete", "color": "green"}
+                        {"name": "Complete", "color": "green"},
                         {"name": "Blocked", "color": "red"}
                     ]
                 }
