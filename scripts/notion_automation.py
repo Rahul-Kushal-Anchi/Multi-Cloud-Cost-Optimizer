@@ -7,7 +7,16 @@ Automatically sets up your Final Exam Prep task tracker in Notion
 import os
 import sys
 from notion_client import Client
-from notion_client.errors import APIError
+try:
+    from notion_client.errors import APIError
+except ImportError:
+    # Fallback for different versions
+    try:
+        from notion_client.api_errors import APIError
+    except ImportError:
+        # Create a simple exception class if not available
+        class APIError(Exception):
+            pass
 import json
 
 # Your Notion credentials (from environment variables)
@@ -38,7 +47,7 @@ def get_user_pages(notion):
         results = notion.search(filter={"property": "object", "value": "page"})
         print(f"\n📄 Found {len(results.get('results', []))} pages")
         return results.get('results', [])
-    except APIError as e:
+    except Exception as e:
         print(f"❌ Error searching pages: {e}")
         return []
 
@@ -115,7 +124,7 @@ def convert_checkboxes(notion, page_id):
         print(f"✅ Found {updated_count} checkboxes")
         return True
         
-    except APIError as e:
+    except Exception as e:
         print(f"❌ Error converting checkboxes: {e}")
         return False
 
@@ -170,7 +179,7 @@ def create_database_view(notion, page_id):
         print(f"✅ Database created: {database['id']}")
         return database
         
-    except APIError as e:
+    except Exception as e:
         print(f"❌ Error creating database: {e}")
         return None
 
@@ -240,7 +249,7 @@ def main():
     try:
         page = notion.pages.retrieve(page_id)
         print(f"✅ Page found: {page.get('properties', {}).get('title', {}).get('title', [{}])[0].get('plain_text', 'Untitled')}")
-    except APIError as e:
+    except Exception as e:
         print(f"❌ Cannot access page: {e}")
         print("\n💡 Make sure:")
         print("   1. The page is shared with your Notion integration")
