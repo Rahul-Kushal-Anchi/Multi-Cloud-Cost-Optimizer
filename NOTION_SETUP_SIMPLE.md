@@ -101,7 +101,7 @@ Your Notion task tracker is now automated and ready to use!
 
 ### **Error: "NOTION_TOKEN not set"**
 ```bash
-export NOTION_TOKEN="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"
+export NOTION_TOKEN="your_notion_token_here"
 export NOTION_USER_ID="22dd872b-594c-814c-84b8-0002da5d3d3f"
 ```
 
@@ -118,7 +118,7 @@ pip3 install notion-client
 
 ## 🎯 **Your Credentials:**
 
-- **Token:** `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`
+- **Token:** `your_notion_token_here`
 - **User ID:** `22dd872b-594c-814c-84b8-0002da5d3d3f`
 - **Stored in:** `scripts/.env` (local only, safe!)
 

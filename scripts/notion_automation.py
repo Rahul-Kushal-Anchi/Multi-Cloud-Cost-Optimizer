@@ -161,7 +161,7 @@ def create_database_view(notion, page_id):
         
         # Create database as child of page
         database = notion.databases.create(
-            parent={"page_id": page_id},
+            parent={"type": "page_id", "page_id": page_id},
             title=[{"type": "text", "text": {"content": "Final Exam Prep Tasks"}}],
             properties=database_properties
         )

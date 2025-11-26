@@ -11,7 +11,7 @@ Your Notion credentials are saved in `scripts/.env` (local file, not in Git).
 ./scripts/run_notion_automation.sh
 
 # Option 2: Set environment variables manually
-export NOTION_TOKEN="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"
+export NOTION_TOKEN="your_notion_token_here"
 export NOTION_USER_ID="22dd872b-594c-814c-84b8-0002da5d3d3f"
 python3 scripts/notion_automation.py
 ```

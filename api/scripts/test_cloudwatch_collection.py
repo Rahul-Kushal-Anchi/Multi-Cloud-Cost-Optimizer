@@ -87,7 +87,8 @@ def test_cloudwatch_collection():
                 print(f"   Network Out: {len(metrics['network_out'])} data points")
                 
                 if metrics['cpu_utilization']:
-                    avg_cpu = sum(metrics['cpu_utilization']) / len(metrics['cpu_utilization'])
+                    cpu_values = [dp['value'] for dp in metrics['cpu_utilization']]
+                    avg_cpu = sum(cpu_values) / len(cpu_values)
                     print(f"   Average CPU: {avg_cpu:.2f}%")
                 
                 # Test full collection

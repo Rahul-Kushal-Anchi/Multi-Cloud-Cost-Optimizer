@@ -79,28 +79,54 @@ def extract_utilization_features(metrics_data: pd.DataFrame) -> pd.DataFrame:
     """
     df = metrics_data.copy()
     
+    # Check if memory_utilization has any non-null values
+    has_memory_data = df['memory_utilization'].notna().any()
+    
     # Aggregate metrics per instance
-    instance_features = df.groupby('instance_id').agg({
+    agg_dict = {
         'cpu_utilization': ['mean', 'std', 'min', 'max', lambda x: np.percentile(x, 95), lambda x: np.percentile(x, 99)],
-        'memory_utilization': ['mean', 'std', 'min', 'max', lambda x: np.percentile(x, 95), lambda x: np.percentile(x, 99)],
         'network_in': ['mean', 'max'],
         'network_out': ['mean', 'max']
-    }).reset_index()
+    }
+    
+    # Only include memory_utilization in aggregation if we have data
+    if has_memory_data:
+        agg_dict['memory_utilization'] = ['mean', 'std', 'min', 'max', lambda x: np.percentile(x, 95), lambda x: np.percentile(x, 99)]
+    
+    instance_features = df.groupby('instance_id').agg(agg_dict).reset_index()
     
     # Flatten column names
-    instance_features.columns = ['instance_id', 
-                                 'cpu_mean', 'cpu_std', 'cpu_min', 'cpu_max', 'cpu_p95', 'cpu_p99',
-                                 'memory_mean', 'memory_std', 'memory_min', 'memory_max', 'memory_p95', 'memory_p99',
-                                 'network_in_mean', 'network_in_max',
-                                 'network_out_mean', 'network_out_max']
+    if has_memory_data:
+        instance_features.columns = ['instance_id', 
+                                     'cpu_mean', 'cpu_std', 'cpu_min', 'cpu_max', 'cpu_p95', 'cpu_p99',
+                                     'memory_mean', 'memory_std', 'memory_min', 'memory_max', 'memory_p95', 'memory_p99',
+                                     'network_in_mean', 'network_in_max',
+                                     'network_out_mean', 'network_out_max']
+    else:
+        instance_features.columns = ['instance_id', 
+                                     'cpu_mean', 'cpu_std', 'cpu_min', 'cpu_max', 'cpu_p95', 'cpu_p99',
+                                     'network_in_mean', 'network_in_max',
+                                     'network_out_mean', 'network_out_max']
+        # Add memory columns with NaN values
+        instance_features['memory_mean'] = np.nan
+        instance_features['memory_std'] = np.nan
+        instance_features['memory_min'] = np.nan
+        instance_features['memory_max'] = np.nan
+        instance_features['memory_p95'] = np.nan
+        instance_features['memory_p99'] = np.nan
     
-    # Calculate utilization ratios
+    # Calculate utilization ratios (handle NaN for memory)
     instance_features['cpu_utilization_ratio'] = instance_features['cpu_mean'] / 100.0
     instance_features['memory_utilization_ratio'] = instance_features['memory_mean'] / 100.0
     
-    # Calculate peak to average ratios
+    # Calculate peak to average ratios (handle NaN for memory)
     instance_features['cpu_peak_to_avg'] = instance_features['cpu_max'] / (instance_features['cpu_mean'] + 1e-6)
-    instance_features['memory_peak_to_avg'] = instance_features['memory_max'] / (instance_features['memory_mean'] + 1e-6)
+    # Only calculate memory peak-to-avg if we have valid memory data
+    instance_features['memory_peak_to_avg'] = np.where(
+        instance_features['memory_mean'].notna(),
+        instance_features['memory_max'] / (instance_features['memory_mean'] + 1e-6),
+        np.nan
+    )
     
     return instance_features
 

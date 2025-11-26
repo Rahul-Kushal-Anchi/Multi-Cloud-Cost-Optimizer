@@ -44,7 +44,7 @@ else
     echo "❌ scripts/.env not found"
     echo "   Creating it now..."
     cat > scripts/.env << 'ENVEOF'
-NOTION_TOKEN=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
+NOTION_TOKEN=your_notion_token_here
 NOTION_USER_ID=22dd872b-594c-814c-84b8-0002da5d3d3f
 ENVEOF
     echo "✅ Created scripts/.env"

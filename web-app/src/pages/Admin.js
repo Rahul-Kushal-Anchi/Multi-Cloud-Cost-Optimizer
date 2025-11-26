@@ -17,6 +17,8 @@ const Admin = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [connectTenant, setConnectTenant] = useState(null);
+  const [dataAvailability, setDataAvailability] = useState(null);
+  const [checkingData, setCheckingData] = useState(false);
   const [awsForm, setAwsForm] = useState({
     aws_role_arn: '',
     external_id: '',
@@ -110,6 +112,29 @@ const Admin = () => {
     });
   };
 
+  // Check data availability
+  const checkDataAvailability = async () => {
+    setCheckingData(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${getApiBase()}/ml/data-availability`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to check data availability');
+      }
+      const data = await response.json();
+      setDataAvailability(data);
+      toast.success(data.message || 'Data availability checked');
+    } catch (error) {
+      toast.error(error.message || 'Failed to check data availability');
+    } finally {
+      setCheckingData(false);
+    }
+  };
+
   // Rotate external ID mutation
   const rotateExternalIdMutation = useMutation(
     async (tenantId) => {
@@ -194,6 +219,54 @@ const Admin = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
         <p className="text-gray-600">Manage tenants and platform settings</p>
+      </div>
+
+      {/* Data Availability Check */}
+      <div className="mb-6 flex gap-4">
+        <button
+          onClick={checkDataAvailability}
+          disabled={checkingData}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+        >
+          {checkingData ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              Checking...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Check Data Availability
+            </>
+          )}
+        </button>
+        {dataAvailability && (
+          <div className="flex-1 bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {dataAvailability.sufficient_for_training ? '✅' : '⚠️'} {dataAvailability.days_available} Days Available
+                </p>
+                <p className="text-xs text-gray-500">
+                  {dataAvailability.earliest_date} to {dataAvailability.latest_date}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className={`text-sm font-semibold ${dataAvailability.sufficient_for_training ? 'text-green-600' : 'text-yellow-600'}`}>
+                  {dataAvailability.sufficient_for_training ? 'Ready for ML' : 'Need More Data'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {dataAvailability.recommendation === 'train_180_days' ? 'Train on 180 days' :
+                   dataAvailability.recommendation === 'train_120_days' ? 'Train on 120 days' :
+                   dataAvailability.recommendation === 'train_90_days' ? 'Train on 90 days' :
+                   'Wait for more data'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats */}

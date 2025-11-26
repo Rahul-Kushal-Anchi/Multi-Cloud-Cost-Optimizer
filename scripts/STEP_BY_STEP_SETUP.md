@@ -41,7 +41,7 @@ ls -la scripts/.env
 **If not, create it:**
 ```bash
 cat > scripts/.env << 'EOF'
-NOTION_TOKEN=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
+NOTION_TOKEN=your_notion_token_here
 NOTION_USER_ID=22dd872b-594c-814c-84b8-0002da5d3d3f
 EOF
 ```
@@ -107,7 +107,7 @@ cd /Users/rahulkushalanchi/Downloads/multi-cloud-cost-optimizer
 ### **Option B: Run Python Script Directly**
 ```bash
 cd /Users/rahulkushalanchi/Downloads/multi-cloud-cost-optimizer
-export NOTION_TOKEN="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"
+export NOTION_TOKEN="your_notion_token_here"
 export NOTION_USER_ID="22dd872b-594c-814c-84b8-0002da5d3d3f"
 python3 scripts/notion_automation.py
 ```
@@ -257,7 +257,7 @@ Since Notion API can't convert markdown checkboxes automatically:
 ls -la scripts/.env
 
 # Or set manually
-export NOTION_TOKEN="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"
+export NOTION_TOKEN="your_notion_token_here"
 ```
 
 ### **Error: "Cannot access page"**
@@ -285,7 +285,7 @@ pip3 install notion-client
 ```
 
 **Your credentials:**
-- Token: `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`
+- Token: `your_notion_token_here`
 - User ID: `22dd872b-594c-814c-84b8-0002da5d3d3f`
 - Stored in: `scripts/.env` (local only)
 

@@ -53,7 +53,7 @@ def get_cloudwatch_metrics(
     start_time: datetime,
     end_time: datetime,
     period: int = 3600  # 1 hour periods
-) -> Dict[str, List[float]]:
+) -> Dict[str, List[Dict]]:
     """
     Get CloudWatch metrics for a specific EC2 instance.
     
@@ -65,7 +65,7 @@ def get_cloudwatch_metrics(
         period: Period in seconds (default: 1 hour)
     
     Returns:
-        Dictionary with metric names as keys and lists of values as values
+        Dictionary with metric names as keys and lists of dicts with 'timestamp' and 'value' as values
     """
     cloudwatch = session.client('cloudwatch')
     
@@ -91,7 +91,11 @@ def get_cloudwatch_metrics(
         )
         
         if response['Datapoints']:
-            metrics['cpu_utilization'] = [dp['Average'] for dp in sorted(response['Datapoints'], key=lambda x: x['Timestamp'])]
+            sorted_dps = sorted(response['Datapoints'], key=lambda x: x['Timestamp'])
+            metrics['cpu_utilization'] = [
+                {'timestamp': dp['Timestamp'], 'value': dp['Average']}
+                for dp in sorted_dps
+            ]
     except ClientError as e:
         print(f"Error fetching CPU metrics for {instance_id}: {e}")
     
@@ -108,7 +112,11 @@ def get_cloudwatch_metrics(
         )
         
         if response['Datapoints']:
-            metrics['network_in'] = [dp['Average'] for dp in sorted(response['Datapoints'], key=lambda x: x['Timestamp'])]
+            sorted_dps = sorted(response['Datapoints'], key=lambda x: x['Timestamp'])
+            metrics['network_in'] = [
+                {'timestamp': dp['Timestamp'], 'value': dp['Average']}
+                for dp in sorted_dps
+            ]
     except ClientError as e:
         print(f"Error fetching NetworkIn metrics for {instance_id}: {e}")
     
@@ -125,7 +133,11 @@ def get_cloudwatch_metrics(
         )
         
         if response['Datapoints']:
-            metrics['network_out'] = [dp['Average'] for dp in sorted(response['Datapoints'], key=lambda x: x['Timestamp'])]
+            sorted_dps = sorted(response['Datapoints'], key=lambda x: x['Timestamp'])
+            metrics['network_out'] = [
+                {'timestamp': dp['Timestamp'], 'value': dp['Average']}
+                for dp in sorted_dps
+            ]
     except ClientError as e:
         print(f"Error fetching NetworkOut metrics for {instance_id}: {e}")
     
@@ -169,24 +181,42 @@ def collect_all_instance_metrics(
         instance_id = instance['instance_id']
         print(f"Collecting metrics for {instance_id}...")
         
-        # Get CloudWatch metrics
+        # Get CloudWatch metrics (now returns dicts with timestamp and value)
         metrics = get_cloudwatch_metrics(session, instance_id, start_time, end_time)
         
-        # Convert to DataFrame rows
-        max_length = max(len(v) for v in metrics.values() if v) if any(metrics.values()) else 0
+        # Collect all unique timestamps from all metrics
+        all_timestamps = set()
+        for metric_name, metric_data in metrics.items():
+            if metric_data:
+                for dp in metric_data:
+                    all_timestamps.add(dp['timestamp'])
         
-        if max_length > 0:
-            for i in range(max_length):
-                row = {
-                    'instance_id': instance_id,
-                    'instance_type': instance['instance_type'],
-                    'timestamp': start_time + timedelta(hours=i),
-                    'cpu_utilization': metrics['cpu_utilization'][i] if i < len(metrics['cpu_utilization']) else None,
-                    'memory_utilization': None,  # Not available in standard CloudWatch
-                    'network_in': metrics['network_in'][i] if i < len(metrics['network_in']) else None,
-                    'network_out': metrics['network_out'][i] if i < len(metrics['network_out']) else None,
-                }
-                all_metrics.append(row)
+        if not all_timestamps:
+            continue
+        
+        # Sort timestamps
+        sorted_timestamps = sorted(all_timestamps)
+        
+        # Create a lookup dictionary for each metric by timestamp
+        metric_lookup = {}
+        for metric_name in ['cpu_utilization', 'network_in', 'network_out']:
+            metric_lookup[metric_name] = {
+                dp['timestamp']: dp['value']
+                for dp in metrics.get(metric_name, [])
+            }
+        
+        # Create rows for each timestamp
+        for timestamp in sorted_timestamps:
+            row = {
+                'instance_id': instance_id,
+                'instance_type': instance['instance_type'],
+                'timestamp': timestamp,  # Use actual CloudWatch timestamp
+                'cpu_utilization': metric_lookup['cpu_utilization'].get(timestamp),
+                'memory_utilization': None,  # Not available in standard CloudWatch
+                'network_in': metric_lookup['network_in'].get(timestamp),
+                'network_out': metric_lookup['network_out'].get(timestamp),
+            }
+            all_metrics.append(row)
     
     if not all_metrics:
         return pd.DataFrame()
@@ -215,4 +245,5 @@ def get_memory_utilization_estimate(instance_type: str) -> Optional[float]:
     # 4. Estimate based on instance type and workload patterns
     
     return None  # Return None to indicate we don't have real memory data
+
 

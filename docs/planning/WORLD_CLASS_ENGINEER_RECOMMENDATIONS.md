@@ -365,3 +365,4 @@ CREATE TABLE recommendations (
 
 **Ready to start?** Let's begin with anomaly detection - it's your strongest differentiator! 🚀
 
+
