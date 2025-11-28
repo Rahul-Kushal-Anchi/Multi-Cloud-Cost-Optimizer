@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
+import Anomalies from './pages/Anomalies';
+import RightSizing from './pages/RightSizing';
 import Alerts from './pages/Alerts';
 import Optimizations from './pages/Optimizations';
 import Settings from './pages/Settings';
@@ -163,6 +165,23 @@ export default function App() {
             )
           } />
           
+          <Route path="/anomalies" element={
+            isAuthenticated ? (
+              <AuthenticatedLayout 
+                user={user} 
+                sidebarOpen={sidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                healthy={healthy}
+                connectionStatus={connectionStatus}
+                isOnline={isOnline}
+              >
+                <Anomalies />
+              </AuthenticatedLayout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } />
+          
           <Route path="/alerts" element={
             isAuthenticated ? (
               <AuthenticatedLayout 
@@ -174,6 +193,23 @@ export default function App() {
                 isOnline={isOnline}
               >
                 <Alerts />
+              </AuthenticatedLayout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } />
+          
+          <Route path="/right-sizing" element={
+            isAuthenticated ? (
+              <AuthenticatedLayout 
+                user={user} 
+                sidebarOpen={sidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                healthy={healthy}
+                connectionStatus={connectionStatus}
+                isOnline={isOnline}
+              >
+                <RightSizing />
               </AuthenticatedLayout>
             ) : (
               <Navigate to="/login" replace />

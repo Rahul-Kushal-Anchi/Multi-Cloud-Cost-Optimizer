@@ -107,8 +107,35 @@ export const costAPI = {
   updateProfile: (profileData) => 
     api.put('/user/profile', profileData),
   
-  changePassword: (passwordData) => 
+  changePassword: (passwordData) =>
     api.put('/user/password', passwordData),
+
+  // ML Anomaly Detection
+  trainAnomalyModel: (params) =>
+    api.post('/ml/anomalies/train', params),
+  
+  detectAnomalies: (params) =>
+    api.post('/ml/anomalies/detect', params),
+  
+  getAnomalies: (params) =>
+    api.get('/ml/anomalies', { params }),
+  
+  getAnomalyModelStatus: () =>
+    api.get('/ml/anomalies/model-status'),
+
+  // ML Right-Sizing
+  getRightSizingRecommendations: (params) =>
+    api.get('/ml/right-sizing', { params }),
+  
+  getSavedRecommendations: (params) =>
+    api.get('/ml/recommendations', { params }),
+
+  // ML Cost Forecasting
+  trainForecastModel: (params) =>
+    api.post('/ml/forecast/train', params),
+  
+  getCostForecast: (params) =>
+    api.get('/ml/forecast', { params }),
 
   // Auth
   login: (credentials) =>

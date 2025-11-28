@@ -65,8 +65,10 @@ except ImportError:
 
 try:
     from api.secure.aws.assume_role import assume_vendor_role
+    from api.services.aws_cost_service import aws_cost_service
 except ImportError:
     from secure.aws.assume_role import assume_vendor_role
+    from services.aws_cost_service import aws_cost_service
 
 try:
     from api.real_costs import get_cost_client
@@ -150,15 +152,32 @@ except ImportError:
 # Include Athena costs router (tenant-specific CUR queries)
 try:
     from api.secure.aws.athena_costs import router as athena_costs_router
-
     app.include_router(athena_costs_router)
 except ImportError:
     try:
         from secure.aws.athena_costs import router as athena_costs_router
-
         app.include_router(athena_costs_router)
     except Exception as e:
         print(f"Warning: Athena costs router not available: {e}")
+
+# Include ML routers
+try:
+    from api.routers.ml_anomalies import router as ml_anomalies_router
+    from api.routers.ml_right_sizing import router as ml_right_sizing_router
+    from api.routers.ml_forecasting import router as ml_forecasting_router
+    app.include_router(ml_anomalies_router)
+    app.include_router(ml_right_sizing_router)
+    app.include_router(ml_forecasting_router)
+except ImportError:
+    try:
+        from routers.ml_anomalies import router as ml_anomalies_router
+        from routers.ml_right_sizing import router as ml_right_sizing_router
+        from routers.ml_forecasting import router as ml_forecasting_router
+        app.include_router(ml_anomalies_router)
+        app.include_router(ml_right_sizing_router)
+        app.include_router(ml_forecasting_router)
+    except Exception as e:
+        print(f"Warning: ML routers not available: {e}")
 
 
 @app.get("/healthz", include_in_schema=False)
@@ -389,223 +408,34 @@ def resolve_tenant(
 
 
 def fetch_tenant_cost_data(tenant: Tenant, days: int) -> Dict[str, Any]:
+    """
+    Fetch cost data for a tenant (wrapper for service layer)
+    Delegates to AWSCostService for business logic
+    """
     if not CUR_AVAILABLE:
         raise HTTPException(
             status_code=503,
             detail="CUR integration is not available on this deployment.",
         )
-
-    session = assume_vendor_role(
-        tenant.aws_role_arn, tenant.external_id, tenant.region or "us-east-1"
-    )
-
-    workgroup = tenant.athena_workgroup or "primary"
-    database = tenant.athena_db
-    table = f"{tenant.athena_db}.{tenant.athena_table}"
-
-    service_rows = run_athena_query(
-        session,
-        workgroup=workgroup,
-        database=database,
-        query=cur_cost_query_sql(table, days),
-    )
-    logger.info(
-        "cur_fetch tenant=%s days=%s services_raw_sample=%s",
-        tenant.id,
-        days,
-        service_rows[:3],
-    )
-
-    services: List[Dict[str, Any]] = []
-    total_service_cost = 0.0
-    for row in service_rows:
-        name = (
-            row.get("service")
-            or row.get("SERVICE")
-            or row.get("product_product_name")
-            or "Other"
-        )
-        try:
-            cost = float(row.get("cost") or row.get("COST") or 0)
-        except (TypeError, ValueError):
-            cost = 0.0
-        if cost <= 0:
-            continue
-        total_service_cost += cost
-        services.append(
-            {
-                "name": name.replace("Amazon ", "").replace("AWS ", ""),
-                "cost": round(cost, 2),
-            }
-        )
-
-    services.sort(key=lambda s: s["cost"], reverse=True)
-    baseline_pct = (100 / len(services)) if services else 0.0
-    for svc in services:
-        svc["percentage"] = (
-            round((svc["cost"] / total_service_cost) * 100, 2)
-            if total_service_cost
-            else 0.0
-        )
-        svc["trend"] = (
-            round(svc["percentage"] - baseline_pct, 2) if baseline_pct else 0.0
-        )
-
-    daily_query = f"""
-        SELECT 
-          date_trunc('day', line_item_usage_start_date) AS day,
-          SUM(COALESCE(CAST(line_item_unblended_cost AS double), 0)) AS cost
-        FROM {table}
-        WHERE line_item_usage_start_date >= date_add('day', -{days}, current_timestamp)
-          AND "$path" LIKE '%.parquet'
-        GROUP BY 1
-        ORDER BY 1 ASC
-    """
-
-    daily_rows = run_athena_query(
-        session, workgroup=workgroup, database=database, query=daily_query
-    )
-    logger.info(
-        "cur_fetch tenant=%s days=%s daily_raw_sample=%s",
-        tenant.id,
-        days,
-        daily_rows[:3],
-    )
-
-    daily_data: List[Dict[str, Any]] = []
-    for row in daily_rows:
-        day_raw = row.get("day") or row.get("DAY")
-        cost_raw = row.get("cost") or row.get("COST") or 0
-        try:
-            cost_val = float(cost_raw)
-        except (TypeError, ValueError):
-            cost_val = 0.0
-        day = day_raw[:10] if isinstance(day_raw, str) else ""
-        daily_data.append({"date": day, "cost": round(cost_val, 2)})
-
-    total_cost = round(sum(item["cost"] for item in daily_data), 2)
-    avg_daily = mean([item["cost"] for item in daily_data]) if daily_data else 0.0
-
-    for item in daily_data:
-        item["forecast"] = (
-            round(avg_daily * 1.08, 2) if avg_daily else round(item["cost"] * 1.05, 2)
-        )
-        item["savings"] = round(item["cost"] * 0.18, 2)
-
-    return {
-        "services": services,
-        "daily": daily_data,
-        "total_cost": total_cost,
-        "avg_daily": avg_daily,
-    }
+    
+    # Delegate to service layer
+    return aws_cost_service.fetch_tenant_cost_data(tenant, days)
 
 
 def build_dynamic_alerts(cost_summary: Dict[str, Any]) -> List[Dict[str, Any]]:
-    alerts: List[Dict[str, Any]] = []
-    daily_data = cost_summary["daily"]
-    if not daily_data:
-        return alerts
-
-    latest = daily_data[-1]["cost"]
-    previous_window = [item["cost"] for item in daily_data[:-1]] or [latest]
-    previous_avg = mean(previous_window) if previous_window else latest
-
-    if previous_avg and latest > previous_avg * DEFAULT_ALERT_THRESHOLD_MULTIPLIER:
-        alerts.append(
-            {
-                "id": "auto-cost-spike",
-                "type": "cost_spike",
-                "severity": "high",
-                "title": "Cost spike detected",
-                "message": f"Daily spend ${latest:,.2f} exceeded baseline ${previous_avg:,.2f}",
-                "timestamp": datetime.utcnow().isoformat(),
-                "status": "active",
-                "threshold": round(
-                    previous_avg * DEFAULT_ALERT_THRESHOLD_MULTIPLIER, 2
-                ),
-                "currentValue": round(latest, 2),
-                "service": "Overall",
-                "region": "All",
-            }
-        )
-
-    if previous_avg and latest < previous_avg * 0.7:
-        alerts.append(
-            {
-                "id": "auto-sudden-drop",
-                "type": "usage_drop",
-                "severity": "medium",
-                "title": "Significant drop in spend",
-                "message": f"Latest spend ${latest:,.2f} is much lower than typical ${previous_avg:,.2f}",
-                "timestamp": datetime.utcnow().isoformat(),
-                "status": "active",
-                "threshold": round(previous_avg * 0.7, 2),
-                "currentValue": round(latest, 2),
-                "service": "Overall",
-                "region": "All",
-            }
-        )
-
-    return [
-        {**alert, **dynamic_alert_overrides.get(alert["id"], {})} for alert in alerts
-    ]
+    """
+    Build dynamic alerts (wrapper for service layer)
+    Delegates to AWSCostService for business logic
+    """
+    return aws_cost_service.build_dynamic_alerts(cost_summary, dynamic_alert_overrides)
 
 
-def build_optimization_recommendations(
-    cost_summary: Dict[str, Any],
-) -> List[Dict[str, Any]]:
-    recommendations: List[Dict[str, Any]] = []
-    services = cost_summary["services"]
-
-    for index, service in enumerate(services[:5]):
-        savings_estimate = round(service["cost"] * 0.25, 2)
-        impact = (
-            "high"
-            if service["percentage"] >= 25
-            else "medium" if service["percentage"] >= 10 else "low"
-        )
-        effort = "low" if index == 0 else "medium" if index <= 2 else "high"
-
-        rec_id = f"opt-{service['name'].lower().replace(' ', '-')}"
-        recommendations.append(
-            {
-                "id": rec_id,
-                "type": "cost_optimization",
-                "service": service["name"],
-                "description": f"Review {service['name']} spend (${service['cost']:,.2f}) for rightsizing and savings opportunities.",
-                "potentialSavings": savings_estimate,
-                "impact": impact,
-                "effort": effort,
-                "status": optimization_status_overrides.get(rec_id, {}).get(
-                    "status", "recommended"
-                ),
-                "priority": (
-                    "high"
-                    if impact == "high"
-                    else "medium" if impact == "medium" else "low"
-                ),
-            }
-        )
-
-    if cost_summary["total_cost"] > 0:
-        rec_id = "opt-reserved-instance-review"
-        recommendations.append(
-            {
-                "id": rec_id,
-                "type": "purchase_planning",
-                "service": "EC2/RDS",
-                "description": "Evaluate Reserved Instances or Savings Plans to lock in savings for steady workloads.",
-                "potentialSavings": round(cost_summary["total_cost"] * 0.18, 2),
-                "impact": "medium",
-                "effort": "medium",
-                "status": optimization_status_overrides.get(rec_id, {}).get(
-                    "status", "recommended"
-                ),
-                "priority": "medium",
-            }
-        )
-
-    return recommendations
+def build_optimization_recommendations(cost_summary: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Build optimization recommendations (wrapper for service layer)
+    Delegates to AWSCostService for business logic
+    """
+    return aws_cost_service.build_optimization_recommendations(cost_summary, optimization_status_overrides)
 
 
 def get_user_alerts_for_tenant(tenant_id: int) -> List[Dict[str, Any]]:

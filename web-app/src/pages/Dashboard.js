@@ -323,7 +323,7 @@ const Dashboard = () => {
         </motion.div>
       </div>
 
-      {/* Optimization Opportunities - Link to Optimizations page */}
+      {/* ML Insights Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -331,7 +331,47 @@ const Dashboard = () => {
         className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Optimization Opportunities</h3>
+          <h3 className="text-lg font-semibold text-gray-900">🤖 ML Insights</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <a href="/anomalies" className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow transition-all">
+            <div className="flex items-center gap-3 mb-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <h4 className="font-semibold text-gray-900">Anomaly Detection</h4>
+            </div>
+            <p className="text-sm text-gray-600">ML-powered cost anomaly detection</p>
+            <p className="text-xs text-blue-600 mt-2">View Anomalies →</p>
+          </a>
+          
+          <a href="/right-sizing" className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow transition-all">
+            <div className="flex items-center gap-3 mb-2">
+              <TrendingDown className="h-5 w-5 text-green-600" />
+              <h4 className="font-semibold text-gray-900">Right-Sizing</h4>
+            </div>
+            <p className="text-sm text-gray-600">Optimize instance types & save money</p>
+            <p className="text-xs text-blue-600 mt-2">See Recommendations →</p>
+          </a>
+          
+          <a href="/analytics" className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow transition-all">
+            <div className="flex items-center gap-3 mb-2">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              <h4 className="font-semibold text-gray-900">Cost Forecasting</h4>
+            </div>
+            <p className="text-sm text-gray-600">Predict future costs with ML</p>
+            <p className="text-xs text-blue-600 mt-2">View Forecasts →</p>
+          </a>
+        </div>
+      </motion.div>
+
+      {/* Optimization Opportunities */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
           <a 
             href="/optimizations" 
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -340,7 +380,7 @@ const Dashboard = () => {
           </a>
         </div>
         <div className="text-center py-8">
-          <p className="text-gray-500 mb-4">View detailed optimization recommendations</p>
+          <p className="text-gray-500 mb-4">Access all optimization features</p>
           <a 
             href="/optimizations"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

@@ -96,6 +96,20 @@ const Sidebar = ({ isOpen, onClose }) => {
       roles: ['global_owner', 'owner', 'admin', 'member']
     },
     {
+      name: 'Anomalies',
+      href: '/anomalies',
+      icon: AlertTriangle,
+      description: 'ML-powered anomaly detection',
+      roles: ['global_owner', 'owner', 'admin', 'member']
+    },
+    {
+      name: 'Right-Sizing',
+      href: '/right-sizing',
+      icon: Activity,
+      description: 'ML-powered instance optimization',
+      roles: ['global_owner', 'owner', 'admin', 'member']
+    },
+    {
       name: 'Optimizations',
       href: '/optimizations',
       icon: Activity,
