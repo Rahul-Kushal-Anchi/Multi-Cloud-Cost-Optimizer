@@ -648,4 +648,73 @@ const Admin = () => {
 };
 
 export default Admin;
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Database</label>
+                  <input
+                    name="athena_db"
+                    value={awsForm.athena_db}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Table</label>
+                  <input
+                    name="athena_table"
+                    value={awsForm.athena_table}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Results Bucket</label>
+                  <input
+                    name="athena_results_bucket"
+                    value={awsForm.athena_results_bucket}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Results Prefix</label>
+                  <input
+                    name="athena_results_prefix"
+                    value={awsForm.athena_results_prefix}
+                    onChange={handleAwsFormChange}
+                    required
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 border-t border-gray-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setConnectTenant(null)}
+                  className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={connectAwsMutation.isLoading}
+                  className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {connectAwsMutation.isLoading ? 'Saving…' : 'Save Connection'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Admin;
 
